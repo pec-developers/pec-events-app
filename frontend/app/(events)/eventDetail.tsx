@@ -236,13 +236,22 @@ export default function EventDetail() {
 
       {/* Register CTA */}
       <Pressable
-        style={styles.registerBtn}
+        style={[
+          styles.registerBtn,
+          !(event as any)?.registrationLink && styles.registerBtnDisabled
+        ]}
         onPress={() => {
           const url = (event as any)?.registrationLink
           if (url) Linking.openURL(url)
         }}
+        disabled={!(event as any)?.registrationLink}
       >
-        <Text style={styles.registerText}>Register Now</Text>
+        <Text style={[
+          styles.registerText,
+          !(event as any)?.registrationLink && styles.registerTextDisabled
+        ]}>
+          {(event as any)?.registrationLink ? 'Register Now' : 'No Registration Available'}
+        </Text>
       </Pressable>
     </ScrollView>
   )
@@ -295,7 +304,9 @@ const styles = StyleSheet.create({
   interestNoText: { color: '#9b1c1c', fontWeight: '800' },
 
   registerBtn: { marginHorizontal: 12, marginTop: 18, backgroundColor: '#9e0202', borderRadius: 12, paddingVertical: 14, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  registerBtnDisabled: { backgroundColor: '#9ca3af', shadowOpacity: 0.05, elevation: 1 },
   registerText: { color: '#fff', fontWeight: '900' },
+  registerTextDisabled: { color: '#6b7280' },
 })
 
 
