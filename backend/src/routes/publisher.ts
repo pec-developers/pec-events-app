@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { supabase } from "../supabase";
 import { PublisherService } from "../services/publisher.service";
 import multer from "multer";
+import { createEventSchema } from "../validation";
 
 const router = express.Router();
 const publisherService = new PublisherService(supabase);
@@ -105,7 +106,6 @@ router.post("/events", upload.single('image'), async (req: Request, res: Respons
 
     // Basic validation using zod schema
     try {
-      const { createEventSchema } = await import('../validation');
       createEventSchema.parse(eventData);
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e?.message || 'Invalid event data.' });

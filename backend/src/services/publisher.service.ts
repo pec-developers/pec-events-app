@@ -544,6 +544,7 @@ export class PublisherService {
       const eventStartTime = new Date(`${event.date}T${event.start_time}`);
 
       const formattedEvent = {
+        id: event.id,
         imageUrl: event.image_url ? signUrl(event.image_url) : null,
         title: event.title,
         date: formatDateToDDMonYYYY(event.date),

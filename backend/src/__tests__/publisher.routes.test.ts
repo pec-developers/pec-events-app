@@ -62,6 +62,12 @@ describe('Publisher routes', () => {
   });
 
   describe('GET /events/:eventId', () => {
+    test('400 when invalid UUID', async () => {
+      const { app } = buildApp();
+      const res = await request(app).get('/events/not-a-uuid');
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, code: 'INVALID_INPUT' });
+    });
     test('404 when service not success', async () => {
       const { app, getService } = buildApp();
       getService().getEventById.mockResolvedValue({ success: false, message: 'not found' });
@@ -77,6 +83,15 @@ describe('Publisher routes', () => {
   });
 
   describe('PUT /events/:eventId', () => {
+    test('400 when invalid UUID', async () => {
+      const { app } = buildApp();
+      const res = await request(app)
+        .put('/events/not-a-uuid')
+        .type('form')
+        .field('data', JSON.stringify({ title: 'T' }));
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, code: 'INVALID_INPUT' });
+    });
     test('400 when neither data nor image provided', async () => {
       const { app } = buildApp();
       const res = await request(app).put(`/events/${validUuid}`);
@@ -113,6 +128,19 @@ describe('Publisher routes', () => {
   });
 
   describe('POST /events', () => {
+    test('400 when S3 upload error bubbles from service', async () => {
+      const { app, getService } = buildApp(true);
+      // Mimic a service failure specific to S3
+      getService().createEvent.mockResolvedValue({ success: false, code: 'S3_UPLOAD_ERROR', message: 'S3 error' });
+      const res = await request(app)
+        .post('/events')
+        .type('form')
+        .field('data', JSON.stringify({
+          title: 'T', description: 'D', eventType: 'Seminar', date: '2025-10-01', startTime: '10:00:00', endTime: '11:00:00', venue: 'Hall', mode: 'Offline', eligibility: 'All', fee: '0', registrationLink: 'http://example.com', organizers: [{ name: 'A' }], contacts: [{ phone: '123' }]
+        }));
+      expect(res.status).toBe(500);
+      expect(res.body).toMatchObject({ success: false });
+    });
     const baseData = {
       title: 'T',
       description: 'D',
@@ -137,7 +165,7 @@ describe('Publisher routes', () => {
 
     test('400 when invalid JSON in data', async () => {
       const { app } = buildApp(true);
-      const res = await request(app).post('/events').type('form').field('data', '{bad');
+      const res = await request(app).post('/events').field('data', '{bad');
       expect(res.status).toBe(400);
     });
 
@@ -173,6 +201,12 @@ describe('Publisher routes', () => {
   });
 
   describe('DELETE /events/:eventId', () => {
+    test('400 when invalid UUID', async () => {
+      const { app } = buildApp();
+      const res = await request(app).delete('/events/not-a-uuid');
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, code: 'INVALID_INPUT' });
+    });
     test('200 when delete succeeds', async () => {
       const { app, getService } = buildApp();
       getService().deleteEvent.mockResolvedValue({ success: true, message: 'deleted' });
