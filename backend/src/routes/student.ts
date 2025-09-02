@@ -22,14 +22,32 @@ router.get("/events", async (req: Request, res: Response) => {
 router.get("/events/:eventId", async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params;
-    const result = await studentService.getEventById(eventId);
-    
-    if (!result.success) {
-      return res.status(404).json(result);
+
+    // Validate UUID format (RFC 4122 versions 1-5)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(eventId)) {
+      return res
+        .status(400)
+        .json({ success: false, code: "INVALID_INPUT", message: "Invalid eventId. Must be a UUID." });
     }
-    res.json(result);
+
+    const result = await studentService.getEventById(eventId);
+
+    if (!result || (result as any).success === false) {
+      if ((result as any)?.code === "NOT_FOUND") {
+        return res.status(404).json(result);
+      }
+      // For any other failure, return 500 with result or a generic payload
+      return res
+        .status(500)
+        .json(result || { success: false, message: "Failed to fetch event." });
+    }
+
+    return res.status(200).json(result);
   } catch (error: any) {
-    res.status(500).json({ success: false, message: "An unexpected error occurred.", error: error.message });
+    return res
+      .status(500)
+      .json({ success: false, message: "An unexpected error occurred.", error: error.message });
   }
 });
 
