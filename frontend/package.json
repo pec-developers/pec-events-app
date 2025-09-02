@@ -1,6 +1,7 @@
 {
   "name": "pec-event-app",
   "version": "1.0.0",
+  "engines": { "node": ">=16.17.4" },
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start --tunnel",
@@ -61,7 +62,6 @@
   "private": true,
   "resolutions": {
     "@babel/runtime": "^7.26.10",
-    "axios": "^1.7.9",
     "body-parser": "^1.20.2",
     "cookie": "^0.7.0",
     "got": "^11.8.5",

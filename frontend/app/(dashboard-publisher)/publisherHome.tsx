@@ -57,7 +57,9 @@ const PublisherHome = () => {
       await invalidateCacheByPrefix('publisher:events:')
       await invalidateCacheByPrefix('student:events:')
       await invalidateCacheByPrefix('student:events:list')
-    } catch {}
+    } catch (error) {
+      console.error('Error invalidating cache:', error)
+    }
     await fetchEvents()
     setRefreshing(false)
   }, [fetchEvents])

@@ -87,7 +87,7 @@ const PublisherDashBoardLayout = () => {
               onPress={() => router.back()}
             />
           ),
-          href: null,
+          href: null
         }}
       />
 
@@ -95,7 +95,7 @@ const PublisherDashBoardLayout = () => {
         name="edit-event-form"
         options={{
           headerShown: false,
-          href: null,
+          href: null
         }}
       />
     </Tabs>

@@ -28,19 +28,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.gideonjacob.peceventapp",
-      "permissions": [
-        "android.permission.CALL_PHONE",
-        "android.permission.READ_PHONE_STATE"
-      ],
-      "intentFilters": [
-        {
-          "action": "android.intent.action.CALL",
-          "category": ["android.intent.category.DEFAULT"],
-          "data": {
-            "scheme": "tel"
-          }
-        }
-      ]
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro",

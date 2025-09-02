@@ -1,9 +1,9 @@
-import { StyleSheet, Text, View, type ViewStyle, type TextInputProps } from 'react-native'
+import { StyleSheet, type StyleProp, type TextStyle, type TextInputProps } from 'react-native'
 import React from 'react'
 import { TextInput } from 'react-native-gesture-handler'
 
 interface ThemedTextInputProps extends TextInputProps {
-  style?: ViewStyle
+  // style prop is inherited from TextInputProps, no need to redeclare
 }
 
 const ThemedTextInput = ({style, ...props}: ThemedTextInputProps) => {
