@@ -49,10 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY)
         if (raw) {
-          const parsed: AuthUser = JSON.parse(raw)
-          if (isMounted && isValidAuthUser(parsed)) {
-            setState({ status: 'authenticated', user: parsed })
-            return
+          try {
+            const parsed: unknown = JSON.parse(raw)
+            if (isMounted && isValidAuthUser(parsed)) {
+              setState({ status: 'authenticated', user: parsed })
+              return
+            }
+          } catch (error) {
+            // Log parse error for debugging but don't crash the app
+            console.warn('Failed to parse stored auth data:', error)
           }
         }
       } catch {

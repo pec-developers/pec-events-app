@@ -57,7 +57,9 @@ const PublisherHome = () => {
       await invalidateCacheByPrefix('publisher:events:')
       await invalidateCacheByPrefix('student:events:')
       await invalidateCacheByPrefix('student:events:list')
-    } catch {}
+    } catch (error) {
+      console.error('Error invalidating cache:', error)
+    }
     await fetchEvents()
     setRefreshing(false)
   }, [fetchEvents])
@@ -78,7 +80,9 @@ const PublisherHome = () => {
 
   return (
     <ScrollView
+      style={styles.scrollView}
       contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {/* Search Bar */}
@@ -221,10 +225,13 @@ const getEventIcon = (category: string): string => {
 export default PublisherHome
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  container: {
     backgroundColor: '#f8fafc',
     padding: 16,
+    paddingBottom: 32,
   },
   loadingText: {
     fontSize: 16,

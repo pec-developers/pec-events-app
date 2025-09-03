@@ -19,7 +19,8 @@ const Login = () => {
   const [registerNumber, setRegisterNumber] = useState('')
   const [password, setPassword] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loadingLogin, setLoadingLogin] = useState(false)
+  const [loadingGuest, setLoadingGuest] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
   // Using centralized API configuration from src/config/api
@@ -32,7 +33,7 @@ const Login = () => {
     if (usernameEmpty || passwordEmpty) return
 
     try {
-      setLoading(true)
+      setLoadingLogin(true)
       const baseUrl = getApiBaseUrl()
       const response = await fetch(`${baseUrl}/api/login`, {
         method: 'POST',
@@ -45,7 +46,10 @@ const Login = () => {
         try {
           const errJson = await response.json()
           if (errJson?.error) message = String(errJson.error)
-        } catch {}
+        } catch (e) {
+          console.error('Failed to parse error response JSON:', e)
+          message = `Invalid credentials (failed to parse server response: ${e instanceof Error ? e.message : String(e)})`
+        }
         throw new Error(message)
       }
 
@@ -77,27 +81,27 @@ const Login = () => {
         registerNumber: registerNumber.trim(),
       })
       router.replace('/')
-    } catch (err: any) {
+    } catch (err) {
       console.error('Login error:', err)
-      setAuthError(err?.message || 'Login failed')
+      setAuthError(err instanceof Error ? err.message : 'Login failed')
     } finally {
-      setLoading(false)
+      setLoadingLogin(false)
     }
   }
 
   const handleGuestLogin = async () => {
     try {
-      setLoading(true)
+      setLoadingGuest(true)
       await signIn({
         role: 'user',
         name: 'Guest User',
       })
       router.replace('/')
-    } catch (err: any) {
+    } catch (err) {
       console.error('Guest login error:', err)
-      setAuthError(err?.message || 'Guest login failed')
+      setAuthError(err instanceof Error ? err.message : 'Guest login failed')
     } finally {
-      setLoading(false)
+      setLoadingGuest(false)
     }
   }
 
@@ -151,8 +155,8 @@ const Login = () => {
 
     <Spacer height={40}/>
 
-    <Pressable disabled={loading} onPress={handleSubmit} style={({pressed}) => [styles.btn, pressed && styles.pressed, loading && styles.btnDisabled] }>
-      {loading ? (
+    <Pressable disabled={loadingLogin} onPress={handleSubmit} style={({pressed}) => [styles.btn, pressed && styles.pressed, loadingLogin && styles.btnDisabled] }>
+      {loadingLogin ? (
         <ActivityIndicator color="#ffffff" />
       ) : (
         <Text style={styles.btnText}>Login</Text>
@@ -161,8 +165,8 @@ const Login = () => {
 
     <Spacer height={20}/>
 
-    <Pressable disabled={loading} onPress={handleGuestLogin} style={({pressed}) => [styles.guestBtn, pressed && styles.pressed, loading && styles.btnDisabled] }>
-      {loading ? (
+    <Pressable disabled={loadingGuest} onPress={handleGuestLogin} style={({pressed}) => [styles.guestBtn, pressed && styles.pressed, loadingGuest && styles.btnDisabled] }>
+      {loadingGuest ? (
         <ActivityIndicator color="#9e0202" />
       ) : (
         <Text style={styles.guestBtnText}>Continue as Guest</Text>
