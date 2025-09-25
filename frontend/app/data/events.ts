@@ -188,7 +188,7 @@ const mappedHomeToSearch: SearchEvent[] = homeEvents.map((e, idx) => ({
   title: e.title,
   description: e.description,
   category: e.type,
-  department: 'CSE',
+  department: inferDepartmentFromEvent(e),
   image: e.image,
   date: e.date,
   time: e.time,
@@ -200,6 +200,21 @@ const mappedHomeToSearch: SearchEvent[] = homeEvents.map((e, idx) => ({
   creator: e.creator,
   contacts: e.contacts,
 }))
+
+// Helper function to infer department from event content
+function inferDepartmentFromEvent(event: EventItem): SearchEvent['department'] {
+  const eligibility = event.eligibility?.toLowerCase() || ''
+  const organizers = event.organizers?.map(o => o.subtitle.toLowerCase()).join(' ') || ''
+  
+  if (eligibility.includes('cybersecurity') || organizers.includes('cybersecurity')) {
+    return 'CSE' // or return 'CYBER' if you define a separate cybersecurity department
+  }
+  if (eligibility.includes('computer') || organizers.includes('cse')) {
+    return 'CSE'
+  }
+  // Add more mappings as needed based on `event.type`, `event.title`, etc.
+  return 'CSE' // default fallback
+}
 
 export const searchEvents: SearchEvent[] = [...mappedHomeToSearch, ...extraSearchEvents]
 

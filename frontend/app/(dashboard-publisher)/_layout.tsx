@@ -2,9 +2,12 @@ import React from 'react'
 import { Redirect, Tabs, router } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../contexts/AuthContext'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Platform } from 'react-native'
 
 const PublisherDashBoardLayout = () => {
   const { state } = useAuth()
+  const insets = useSafeAreaInsets()
 
   if (state.status === 'loading') return null
   if (state.status === 'unauthenticated') return <Redirect href="/login" />
@@ -19,8 +22,25 @@ const PublisherDashBoardLayout = () => {
         headerTitleStyle: { fontWeight: '700' },
         tabBarActiveTintColor: '#9e0202',
         tabBarInactiveTintColor: '#64748b',
-        tabBarStyle: { height: 64, paddingBottom: 6, paddingTop: 6 },
-        tabBarLabelStyle: { marginBottom: 0, fontSize: 12 },
+        tabBarStyle: {
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 6,
+          paddingTop: 6,
+          paddingHorizontal: 16,
+          backgroundColor: '#ffffff',
+          borderTopWidth: 1,
+          borderTopColor: '#e5e7eb',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 8,
+        },
+        tabBarLabelStyle: { 
+          marginBottom: Platform.OS === 'ios' ? 0 : 2, 
+          fontSize: 12,
+          fontWeight: '500',
+        },
       }}
     >
       <Tabs.Screen
@@ -67,7 +87,7 @@ const PublisherDashBoardLayout = () => {
               onPress={() => router.back()}
             />
           ),
-          href: null,
+          href: null
         }}
       />
 
@@ -75,7 +95,7 @@ const PublisherDashBoardLayout = () => {
         name="edit-event-form"
         options={{
           headerShown: false,
-          href: null,
+          href: null
         }}
       />
     </Tabs>

@@ -196,7 +196,7 @@ export const mockApi = {
 
   async getStudentEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
     return withCache<(EventItem | SearchEvent) | null>(`student:events:${id}`, TWENTY_HOURS_MS, async () => {
-      const baseUrl = getApiBaseUrl();
+      const baseUrl = await getApiBaseUrl();
       const response = await fetch(`${baseUrl}/api/student/events/${encodeURIComponent(id)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -255,9 +255,14 @@ export const mockApi = {
   },
 
   async getPublisherEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
-    const baseUrl = getApiBaseUrl()
-    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+    const baseUrl = await getApiBaseUrl()
+    if (!baseUrl) {
       throw new Error('Missing API base URL configuration')
+    }
+    try {
+      new URL(baseUrl)
+    } catch {
+      throw new Error('Invalid API base URL configuration')
     }
     const token = await (async () => {
       try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
@@ -335,7 +340,7 @@ export const mockApi = {
   async fetchUserProfile(params?: { role: 'user' | 'publisher' }): Promise<UserProfile> {
     const roleKey = params?.role === 'publisher' ? 'publisher' : 'user'
     return withCache<UserProfile>(`profile:${roleKey}`, TWENTY_HOURS_MS, async () => {
-      const baseUrl = getApiBaseUrl();
+      const baseUrl = await getApiBaseUrl();
       const isPublisher = params?.role === 'publisher'
       const token = isPublisher ? await (async () => {
         try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
@@ -356,7 +361,7 @@ export const mockApi = {
       const json: { success: boolean; user?: { fullname?: string; role?: string; department?: string } } = await resp.json()
       const user = json.user || {}
       return {
-        name: user.fullname || 'Publisher',
+        name: user.fullname || ((user.role || params?.role) === 'publisher' ? 'Publisher' : 'User'),
         role: user.role || (params?.role === 'publisher' ? 'Publisher' : 'User'),
         department: user.department || '',
         email: undefined,
@@ -438,7 +443,7 @@ export const mockApi = {
 
   async fetchPublisherEvents(): Promise<PublisherEvent[]> {
     return withCache<PublisherEvent[]>(`publisher:events:list`, TWENTY_HOURS_MS, async () => {
-      const baseUrl = getApiBaseUrl();
+      const baseUrl = await getApiBaseUrl();
       const token = await (async () => {
         try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
       })()
@@ -484,7 +489,7 @@ export const mockApi = {
   },
 
   async updatePublisherEvent(id: string, dataObj: Record<string, any>, imageFile?: any): Promise<{ success: boolean; eventId?: string; message?: string }> {
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = await getApiBaseUrl();
     const token = await (async () => {
       try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
     })()
@@ -519,7 +524,7 @@ export const mockApi = {
   },
 
   async createPublisherEvent(dataObj: Record<string, any>, imageFile?: any): Promise<{ success: boolean; eventId?: string; message?: string }> {
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = await getApiBaseUrl();
     const token = await (async () => {
       try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
     })()
@@ -570,7 +575,7 @@ export const mockApi = {
 
 
 async deleteEvent(eventId: string): Promise<boolean> {
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = await getApiBaseUrl();
   const token = await (async () => {
     try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
   })()
@@ -607,7 +612,7 @@ async deleteEvent(eventId: string): Promise<boolean> {
   } */
 
   async listSearchEvents(params?: { dept?: string; type?: string; name?: string }): Promise<SearchEvent[]> {
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = await getApiBaseUrl();
     
     try {
       const url = new URL(`${baseUrl}/api/student/events`)

@@ -53,10 +53,12 @@ const StudentSearch = () => {
   }, [query, selectedDepartment, selectedCategory])
 
   const filtered = useMemo(() => {
+    const normalizedQuery = query.toLowerCase().trim()
+    
     return allEvents.filter((e) => {
-      const matchesQuery = query.trim() === '' || 
-        e.title.toLowerCase().includes(query.toLowerCase().trim()) || 
-        e.description.toLowerCase().includes(query.toLowerCase().trim())
+      const matchesQuery = normalizedQuery === '' || 
+        (e.title || '').toLowerCase().includes(normalizedQuery) || 
+        (e.description || '').toLowerCase().includes(normalizedQuery)
       
       const matchesDept = selectedDepartment === 'All Departments' || e.department === selectedDepartment
       const matchesCat = selectedCategory === 'All' || e.category === selectedCategory

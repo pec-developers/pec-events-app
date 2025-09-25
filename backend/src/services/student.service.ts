@@ -155,21 +155,25 @@ export class StudentService {
         image_url
       `)
       .eq("id", eventId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error getting event:", error);
       return { success: false, message: "Failed to get event." };
     }
 
-    if (data && data.image_url) {
+    if (!data) {
+      return { success: false, code: "NOT_FOUND", message: "Event not found." };
+    }
+
+    if (data.image_url) {
       data.image_url = signUrl(data.image_url);
     }
 
-    if (data && data.start_time) {
+    if (data.start_time) {
       data.start_time = formatTime(data.start_time);
     }
-    if (data && data.end_time) {
+    if (data.end_time) {
       data.end_time = formatTime(data.end_time);
     }
 

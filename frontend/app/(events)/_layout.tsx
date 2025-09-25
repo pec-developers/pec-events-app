@@ -1,6 +1,7 @@
 import React from 'react'
 import { Tabs } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
+import { TouchableOpacity } from 'react-native'
 
 const EventDetailsLayout = () => {
   return (
@@ -14,13 +15,14 @@ const EventDetailsLayout = () => {
           headerTitleAlign: 'center',
           tabBarButton: () => null,
           headerLeft: () => (
-            <Icon
-              name="chevron-back"
-              size={22}
-              color="#0f172a"
-              style={{ marginLeft: 12 }}
-              onPress={() => navigation.goBack()}
-            />
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Icon
+                name="chevron-back"
+                size={22}
+                color="#0f172a"
+                style={{ marginLeft: 12 }}
+              />
+            </TouchableOpacity>
           ),
         })}
       />

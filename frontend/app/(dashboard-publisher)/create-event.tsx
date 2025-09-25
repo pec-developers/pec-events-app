@@ -11,6 +11,7 @@ import { Picker } from '@react-native-picker/picker'
 
 type mode = 'Online' | 'Offline' | 'Hybrid'
 type EventType = 'Seminar' | 'Workshop' | 'Guest Lecture' | 'Industrial Visit' | 'Cultural' | 'Sports'
+type EventMode = 'Online' | 'Offline' | 'Hybrid'
 
 type Organizer = {
   parentOrganization: string
@@ -396,7 +397,7 @@ const PublisherCreateEvent = () => {
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={mode}
-              onValueChange={(value: string) => setMode(value as mode)}
+              onValueChange={(value: string) => setMode(value as EventMode)}
               style={styles.picker}
             >
               <Picker.Item label="Select mode" value="" />
@@ -708,7 +709,12 @@ const PublisherCreateEvent = () => {
                       style={styles.timeButton}
                       onPress={() => {
                         const newTime = new Date(selectedTime)
-                        newTime.setMinutes((selectedTime.getMinutes() + 5) % 60)
+                        const currentHour = newTime.getHours()
+                        const currentMinutes = newTime.getMinutes()
+                        const totalMinutes = currentHour * 60 + currentMinutes + 5
+                        const normalizedTotalMinutes = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60)
+                        newTime.setHours(Math.floor(normalizedTotalMinutes / 60))
+                        newTime.setMinutes(normalizedTotalMinutes % 60)
                         setSelectedTime(newTime)
                       }}
                     >
@@ -721,7 +727,12 @@ const PublisherCreateEvent = () => {
                       style={styles.timeButton}
                       onPress={() => {
                         const newTime = new Date(selectedTime)
-                        newTime.setMinutes((selectedTime.getMinutes() - 5 + 60) % 60)
+                        const currentHour = newTime.getHours()
+                        const currentMinutes = newTime.getMinutes()
+                        const totalMinutes = currentHour * 60 + currentMinutes - 5
+                        const normalizedTotalMinutes = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60)
+                        newTime.setHours(Math.floor(normalizedTotalMinutes / 60))
+                        newTime.setMinutes(normalizedTotalMinutes % 60)
                         setSelectedTime(newTime)
                       }}
                     >
@@ -913,18 +924,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   addButton: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 8,
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 16,
   },
   addButtonText: {
     fontWeight: '600',
-    
-
+    color: '#374151',
   },
   publishButton: {
     backgroundColor: '#991b1b',

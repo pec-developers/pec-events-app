@@ -36,21 +36,28 @@ export default function EventDetail() {
   const params = useLocalSearchParams<Params>()
   const [loading, setLoading] = useState(true)
   const [event, setEvent] = useState<(EventItem | SearchEvent) | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
     ;(async () => {
       try {
-        if (!params.id) return
+        if (!params.id) {
+          if (isMounted) {
+            setError('Event ID is missing. Please try again.')
+            setLoading(false)
+          }
+          return
+        }
         const data = await mockApi.getStudentEventById(params.id)
         if (isMounted) setEvent(data)
       } catch (error) {
         console.error('Failed to fetch event:', error)
-        // Consider setting an error state to display to the user
+        if (isMounted) setError('Failed to load event details. Please try again.')
       } finally {
         if (isMounted) setLoading(false)
       }
-    })();
+    })()
     return () => {
       isMounted = false
     }
@@ -60,6 +67,14 @@ export default function EventDetail() {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color="#9e0202" />
+      </View>
+    )
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#9e0202', fontSize: 16 }}>{error}</Text>
       </View>
     )
   }
@@ -150,7 +165,16 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  await contactUtils.makePhoneCall(c.phone)
+                  try {
+                    if (!c.phone || c.phone.trim().length === 0) {
+                      Alert.alert('Invalid Phone Number', 'Please provide a valid phone number to make a call.')
+                      return
+                    }
+                    await contactUtils.makePhoneCall(c.phone)
+                  } catch (error) {
+                    console.error('Phone call failed:', error)
+                    Alert.alert('Call Failed', 'Unable to make the phone call. Please try again or dial the number manually.')
+                  }
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -158,7 +182,16 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  await contactUtils.openWhatsApp(c.phone)
+                  try {
+                    if (!c.phone || c.phone.trim().length === 0) {
+                      Alert.alert('Invalid Phone Number', 'Please provide a valid phone number to open WhatsApp.')
+                      return
+                    }
+                    await contactUtils.openWhatsApp(c.phone)
+                  } catch (error) {
+                    console.error('WhatsApp open failed:', error)
+                    Alert.alert('WhatsApp Failed', 'Unable to open WhatsApp. Please make sure WhatsApp is installed or try opening it manually.')
+                  }
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -181,7 +214,17 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  await contactUtils.makePhoneCall('+91 98765 43210')
+                  try {
+                    const phoneNumber = '+91 98765 43210'
+                    if (!phoneNumber || phoneNumber.trim().length === 0) {
+                      Alert.alert('Invalid Phone Number', 'Please provide a valid phone number to make a call.')
+                      return
+                    }
+                    await contactUtils.makePhoneCall(phoneNumber)
+                  } catch (error) {
+                    console.error('Phone call failed:', error)
+                    Alert.alert('Call Failed', 'Unable to make the phone call. Please try again or dial the number manually.')
+                  }
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -189,7 +232,17 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  await contactUtils.openWhatsApp('+91 98765 43210')
+                  try {
+                    const phoneNumber = '+91 98765 43210'
+                    if (!phoneNumber || phoneNumber.trim().length === 0) {
+                      Alert.alert('Invalid Phone Number', 'Please provide a valid phone number to open WhatsApp.')
+                      return
+                    }
+                    await contactUtils.openWhatsApp(phoneNumber)
+                  } catch (error) {
+                    console.error('WhatsApp open failed:', error)
+                    Alert.alert('WhatsApp Failed', 'Unable to open WhatsApp. Please make sure WhatsApp is installed or try opening it manually.')
+                  }
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -209,7 +262,17 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  await contactUtils.makePhoneCall('+91 98765 43211')
+                  try {
+                    const phoneNumber = '+91 98765 43211'
+                    if (!phoneNumber || phoneNumber.trim().length === 0) {
+                      Alert.alert('Invalid Phone Number', 'Please provide a valid phone number to make a call.')
+                      return
+                    }
+                    await contactUtils.makePhoneCall(phoneNumber)
+                  } catch (error) {
+                    console.error('Phone call failed:', error)
+                    Alert.alert('Call Failed', 'Unable to make the phone call. Please try again or dial the number manually.')
+                  }
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -217,7 +280,17 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  await contactUtils.openWhatsApp('+91 98765 43211')
+                  try {
+                    const phoneNumber = '+91 98765 43211'
+                    if (!phoneNumber || phoneNumber.trim().length === 0) {
+                      Alert.alert('Invalid Phone Number', 'Please provide a valid phone number to open WhatsApp.')
+                      return
+                    }
+                    await contactUtils.openWhatsApp(phoneNumber)
+                  } catch (error) {
+                    console.error('WhatsApp open failed:', error)
+                    Alert.alert('WhatsApp Failed', 'Unable to open WhatsApp. Please make sure WhatsApp is installed or try opening it manually.')
+                  }
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -227,22 +300,36 @@ export default function EventDetail() {
         </>
       )}
 
-      {/* Interest CTA
-      <Text style={styles.sectionTitleCentered}>Are you interested?</Text>
-      <View style={styles.interestRow}>
-        <Pressable style={[styles.interestBtn, styles.interestYes]}><Text style={styles.interestYesText}>Yes</Text></Pressable>
-        <Pressable style={[styles.interestBtn, styles.interestNo]}><Text style={styles.interestNoText}>No</Text></Pressable>
-      </View> */}
-
       {/* Register CTA */}
       <Pressable
-        style={styles.registerBtn}
+        style={[
+          styles.registerBtn,
+          !(event as any)?.registrationLink && styles.registerBtnDisabled
+        ]}
         onPress={() => {
           const url = (event as any)?.registrationLink
-          if (url) Linking.openURL(url)
+          if (url) {
+            Linking.canOpenURL(url)
+              .then((supported) => {
+                if (supported) {
+                  Linking.openURL(url)
+                } else {
+                  Alert.alert('Error', 'Unable to open registration link')
+                }
+              })
+              .catch(() => {
+                Alert.alert('Error', 'Invalid registration link')
+              })
+          }
         }}
+        disabled={!(event as any)?.registrationLink}
       >
-        <Text style={styles.registerText}>Register Now</Text>
+        <Text style={[
+          styles.registerText,
+          !(event as any)?.registrationLink && styles.registerTextDisabled
+        ]}>
+          {(event as any)?.registrationLink ? 'Register Now' : 'No Registration Available'}
+        </Text>
       </Pressable>
     </ScrollView>
   )
@@ -295,7 +382,9 @@ const styles = StyleSheet.create({
   interestNoText: { color: '#9b1c1c', fontWeight: '800' },
 
   registerBtn: { marginHorizontal: 12, marginTop: 18, backgroundColor: '#9e0202', borderRadius: 12, paddingVertical: 14, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  registerBtnDisabled: { backgroundColor: '#9ca3af', shadowOpacity: 0.05, elevation: 1 },
   registerText: { color: '#fff', fontWeight: '900' },
+  registerTextDisabled: { color: '#6b7280' },
 })
 
 

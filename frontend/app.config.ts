@@ -3,8 +3,10 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("./package.json");
 
-export default ({ config }: any): any => {
-  const isDevelopmentEnv = process.env.APP_ENV === "development";
+import { ConfigContext, ExpoConfig } from '@expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => {
+
 
   // Determine API URL for runtime
   const apiUrl = (process.env.EXPO_PUBLIC_API_URL || 

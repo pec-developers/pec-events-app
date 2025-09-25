@@ -21,6 +21,8 @@ const EditEvent = () => {
   const [fetched, setFetched] = useState<(EventItem | SearchEvent) | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const [error, setError] = useState<string | null>(null)
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -28,6 +30,9 @@ const EditEvent = () => {
           const ev = await mockApi.getPublisherEventById(params.id)
           setFetched(ev)
         }
+      } catch (error) {
+        console.error('Failed to fetch event:', error)
+        setError('Failed to load event. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -109,7 +114,16 @@ const EditEvent = () => {
   }
 
   const handleRegistrationLink = () => {
-    Linking.openURL(eventData.registrationLink)
+    if (eventData.registrationLink) {
+      Linking.canOpenURL(eventData.registrationLink).then((supported) => {
+        if (supported) {
+          Linking.openURL(eventData.registrationLink)
+        } else {
+          console.error('Cannot open URL:', eventData.registrationLink)
+          // Show user feedback
+        }
+      })
+    }
   }
 
   if (loading) {

@@ -36,19 +36,50 @@ export class PublisherService {
       throw new Error("CloudFront domain is not configured.");
     }
 
+    // Basic validations and diagnostics to avoid corrupted uploads
+    if (!file) {
+      throw new Error("No file provided for upload.");
+    }
+    if (!(file as any).buffer || !Buffer.isBuffer(file.buffer)) {
+      console.error("Upload error: provided file does not contain a Buffer payload", {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: (file as any).size,
+        hasBuffer: !!(file as any).buffer,
+      });
+      throw new Error("Invalid file payload. Expected a binary buffer.");
+    }
+    if (!file.mimetype?.startsWith("image/")) {
+      console.error("Upload error: non-image file attempted to upload", {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+      });
+      throw new Error("Only image uploads are allowed.");
+    }
+
     const fileExtension = file.originalname.split(".").pop();
-    const key = `event-thumbnails/${randomBytes(16).toString(
-      "hex"
-    )}.${fileExtension}`;
+    const key = `event-thumbnails/${randomBytes(16).toString("hex")}.${fileExtension}`;
 
     const command = new PutObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
+      // Explicitly provide length to ensure full payload is written
+      ContentLength: (file as any).size,
+      // Long-lived caching for immutable image keys
+      CacheControl: "public, max-age=31536000, immutable",
     });
 
     try {
+      console.info("Uploading image to S3", {
+        key,
+        bucket: S3_BUCKET_NAME,
+        mimetype: file.mimetype,
+        size: (file as any).size,
+      });
       await s3Client.send(command);
       const imageUrl = `https://${cloudfrontDomain}/${key}`;
       return imageUrl;
@@ -513,6 +544,7 @@ export class PublisherService {
       const eventStartTime = new Date(`${event.date}T${event.start_time}`);
 
       const formattedEvent = {
+        id: event.id,
         imageUrl: event.image_url ? signUrl(event.image_url) : null,
         title: event.title,
         date: formatDateToDDMonYYYY(event.date),
