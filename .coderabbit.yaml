@@ -1,4 +1,0 @@
-# This configuration tells CodeRabbit to review pull requests against all branches.
-reviews:
-  base_branches:
-    - ".*"
