@@ -1,0 +1,100 @@
+schema: spec-driven
+
+# Project context
+# This is shown to AI when creating artifacts.
+# Adds tech stack, conventions, style guides, domain knowledge, etc.
+context: |
+  Project Name: Prathyusha Engineering College's (PEC) Events Notification/Management Web App
+  Application Type: Progressive Web App (PWA)
+  
+  Domain & Key Purpose:
+    - Allow students to discover and register for free and paid events.
+    - Enable Faculty Coordinators and Student Coordinators to publish events and manage registrations.
+  
+  User Roles & Registration Policy:
+    - Email Domain Rules: Allow registration with any email domain for all roles, relying on manual validation/coordination by event coordinators.
+    - Roles:
+      1. Student / Participant: Can browse events, register, submit payment confirmation (UPI screenshot + transaction ID), and receive notifications.
+      2. Student Coordinator: Can publish events, view/manage registrations, and has full authority to verify/approve payments and registrations.
+      3. Faculty Coordinator: Can publish events, view/manage registrations, verify and approve payments/registrations, manage student coordinators, and edit event details.
+      4. System Admin: Manage users, roles, system parameters, global settings, audit logs, and infrastructure monitoring.
+  
+  Tech Stack & Architecture:
+    - Frontend: React (v19), Zustand (State Management), TypeScript, HeroUI v3 (previously NextUI, styled with Tailwind CSS v4, WCAG compliant via React Aria).
+      - Routing: React Router v7.
+      - Directory layout enforces separation of concerns:
+        - `src/api/` for raw API calls.
+        - `src/stores/` for Zustand state management and data formatting logic.
+        - `src/components/` and `src/pages/` for UI and views.
+    - Backend: Spring Boot, Keycloak (Identity Provider), Kong (API Gateway).
+      - Authentication Flow: React frontend authenticates directly against Keycloak via Authorization Code Flow + PKCE (with Keycloak routes exposed under the Kong gateway, e.g., via `/auth/*` paths), stores the JWT, and sends it in the Authorization header to the Kong Gateway, which proxies to Spring Boot backend services.
+      - User Sync: Basic user profile details (ID, name, email, department, role) are synchronized from Keycloak to the local PostgreSQL database on first successful login to enable seamless SQL joins.
+    - Database: Managed Supabase Cloud (PostgreSQL).
+    - Storage: Dedicated AWS S3 bucket provisioned via Terraform; screenshot uploads are handled directly by the Spring Boot backend.
+    - Infrastructure:
+      - Cloud Provider: AWS
+      - Infrastructure as Code: Terraform (managing AWS S3, CloudFront, Route 53, EKS clusters, and Supabase provisioning)
+      - Environments: dev (development) and prod (production)
+      - Frontend Hosting: AWS S3 + CloudFront + Route 53 (CDN and DNS)
+      - Backend & Services Deployment: Managed via Helm charts stored in the repository, deployed onto AWS EKS (Kubernetes) clusters
+      - Database: Supabase provisioning and PostgreSQL schema migrations/configurations managed in the repository
+      - CI/CD: GitHub Actions pipelines for automated testing, containerization (Docker), Helm packaging, and deployment to dev/prod environments
+
+
+  
+  Design & Aesthetics:
+    - SOLID design principles.
+    - Component Library: HeroUI v3 (previously NextUI) integrated with Tailwind CSS v4 and React Aria (WCAG compliant).
+    - Match PEC's official institutional brand identity using maroon red accents (primary color: #a80000).
+    - Theme layout: Sleek academic-tech theme, light mode by default with dark mode support, modern typography, smooth gradients, subtle micro-animations, and skeleton screen loading states (using HeroUI skeleton components).
+
+
+  
+  Scale & Concurrency:
+    - Estimated peak traffic: 1,000 - 6,000 concurrent devices (target estimate after 4 years of growth).
+    - Ticket Overbooking Control: Database row-level locking (`SELECT ... FOR UPDATE` within Spring Boot transactions) to prevent overselling limited event slots under high concurrency.
+  
+  PWA Notifications:
+    - Full Web Push API implemented using Service Workers and VAPID keys from V1 to enable real-time OS-level push notifications even when the app is closed.
+  
+  Payment Processing Phasing:
+    - V1 (Current): Manual payments. System displays a UPI QR code; students pay external to the app and upload a screenshot of the transaction along with transaction details. Coordinators manually verify and approve.
+    - V2 (Future): Integration of Razorpay API for direct online payments, plus detailed analytics dashboard for coordinators.
+  
+  Testing & QA Strategy:
+    - Focus Areas: Primarily Unit and Integration testing for both frontend (e.g., Vitest, React Testing Library) and backend (e.g., JUnit, Spring Boot Test).
+    - Lifecycle: Follow the Software Testing Life Cycle (STLC) lifecycle. Write test case specifications, design test scenarios, and write/maintain testing documentation first, then implement coding to satisfy those tests (docs-first testing process).
+  
+  Documentation Requirements:
+    - Target Directory: docs/ (relative to workspace root)
+    - Documents to Create & Maintain:
+      1. BRD (Business Requirements Document): Specifying business requirements, roles, constraints, and V1/V2 phasing.
+      2. PRD (Product Requirements Document): Detailing feature specifications, user flows, and product requirements.
+      3. HLD (High-Level Design): Explaining the cross-system architecture, networking, authentication flow, and hosting design.
+      4. LLD (Low-Level Design): Detailing database schemas, API schema specifications with request/response examples, and software components.
+    - Diagram Standards: Use Mermaid syntax for all architecture, flow, and schema diagrams.
+    - Sync Rule: All documentation in the docs/ folder must always be kept strictly in sync with the active OpenSpec configuration and system rules.
+
+
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+rules:
+  proposal:
+    - Focus heavily on user registration workflows and UPI verification flows in V1.
+    - Maintain a clear distinction between the current UPI verification mechanism and the future V2 Razorpay plan.
+  design:
+    - Specify the 3-layer architecture for the React frontend (API Layer, Data Layer, View Layer).
+    - Detail HeroUI v3 component configuration and Tailwind CSS v4 setup on React 19.
+    - Detail the integration between Spring Boot, Keycloak, Kong API Gateway, and PostgreSQL/Supabase.
+    - Outline database schema design for events, registrations, user profiles, and payment audit logs.
+    - Incorporate AWS S3 upload workflows and Supabase database locking strategy.
+    - Ensure BRD, PRD, HLD, and LLD documents (with Mermaid diagrams) are planned in detail and kept fully synchronized.
+  tasks:
+    - Break tasks down logically: setup/infrastructure, backend API design, Keycloak/Kong setup, frontend layer structure, features, and verification.
+    - Include environment setup tasks specifying Helm chart creation and Supabase migration configuration for dev and prod.
+    - Enforce the "docs-first testing" workflow following the STLC lifecycle: require test design and documentation creation tasks to be completed before implementing the functional code.
+    - Focus verification tasks primarily on Unit and Integration testing.
+    - Require tasks for creating and synchronizing BRD, PRD, HLD, and LLD documentation in the docs/ directory.
+
+
