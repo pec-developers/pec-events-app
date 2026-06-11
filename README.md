@@ -80,3 +80,55 @@ This project follows the **STLC (Software Testing Life Cycle)** with a strict **
 - `backend/` — Spring Boot backend codebase. (To be initialized)
 - `infra/` — Terraform configurations and Helm charts. (To be initialized)
 - `openspec/` — OpenSpec configuration and specs.
+
+---
+
+## 🛠️ Tooling & Workflow Integration
+
+### 1. OpenSpec Change Management
+This repository utilizes OpenSpec for spec-driven change management. Design proposals, requirements, and checklists are managed under the `openspec/` folder.
+
+- **Propose a new change:**
+  Scaffold a new design proposal and checklist:
+  ```bash
+  /opsx-propose "<change-name>"
+  ```
+- **Implement changes:**
+  Start executing the checklist tasks:
+  ```bash
+  /opsx-apply
+  ```
+- **Sync delta specifications:**
+  Synchronize completed specifications back to the main specifications folder:
+  ```bash
+  /opsx-sync
+  ```
+- **Archive completed change:**
+  Finalize and clean up completed specs:
+  ```bash
+  /opsx-archive
+  ```
+
+### 2. Graphify Knowledge Graph
+This project maintains a navigable codebase knowledge graph under `graphify-out/` to streamline architecture and concept research.
+
+- **Query the codebase topology:**
+  Search for specific components or functions:
+  ```bash
+  graphify query "<your-question>"
+  ```
+- **Find paths / relationships:**
+  Trace connection paths between distinct files or components:
+  ```bash
+  graphify path "<Component-A>" "<Component-B>"
+  ```
+- **Explain a concept:**
+  Get focused explanations of specific classes or modules:
+  ```bash
+  graphify explain "<concept>"
+  ```
+- **Update the graph:**
+  Synchronize the graph after modifying files (run locally, AST-only extraction):
+  ```bash
+  graphify update .
+  ```
