@@ -123,3 +123,8 @@ PWA notifications are native and run independently of external notification engi
     2.  The backend signs a payload with the private VAPID key and sends it to the browser's web push service.
     3.  The push service wakes up the client Service Worker, displaying an OS-level notification popup.
 
+---
+
+## 4. Reference Documents
+For detailed user interaction flows, styling tokens, and frontend architecture constraints, see the [User Flow and UI Development Documentation](docs/user-flow-docs.md).
+
