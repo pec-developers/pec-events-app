@@ -484,3 +484,8 @@ To prevent slow network I/O from blocking transactions, notification dispatches 
   "details": "Promoted from waiting list. 24 hours to submit payment."
 }
 ```
+
+---
+
+## 7. Reference Documents
+For detailed user interaction flows, styling tokens, and frontend architecture constraints, see the [User Flow and UI Development Documentation](user-flow-docs.md).

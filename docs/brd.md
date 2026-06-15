@@ -38,3 +38,8 @@ The application supports six distinct user roles with hierarchical authority. St
 *   **Razorpay Gateway Integration:** Direct online checkout without screenshot uploads or manual validation.
 *   **Analytics Dashboards:** Automated charts showing registration rate trends, department-wise participation, and financial reconciliations.
 *   **Automatic Reminders:** Scheduled push alerts for upcoming events.
+
+---
+
+## 5. Reference Documents
+For detailed user interaction flows, styling tokens, and frontend architecture constraints, see the [User Flow and UI Development Documentation](user-flow-docs.md).

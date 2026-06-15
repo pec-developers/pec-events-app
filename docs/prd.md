@@ -110,3 +110,8 @@ flowchart TD
 *   **Max Upload Size:** Screenshots must be constrained to 5MB, limited to `.png`, `.jpg`, and `.jpeg` formats.
 *   **UPI Reference Format:** Restrict the transaction ID input to a 12-digit numeric format.
 *   **Skeleton Loading:** Use HeroUI skeletons during data fetch delays to enhance user experience.
+
+---
+
+## 4. Reference Documents
+For detailed user interaction flows, styling tokens, and frontend architecture constraints, see the [User Flow and UI Development Documentation](user-flow-docs.md).
