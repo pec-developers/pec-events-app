@@ -6,10 +6,21 @@ The PostgreSQL database (Supabase) stores user profiles, event details, registra
 
 ```mermaid
 erDiagram
+    eligible_enrollments {
+        varchar registration_number PK
+        varchar name
+        varchar email
+        varchar phone_number
+        varchar department
+        varchar role
+        timestamp created_at
+    }
     users {
         uuid id PK
         varchar name
         varchar email
+        varchar phone_number
+        varchar registration_number FK
         varchar department
         varchar role
         timestamp created_at
@@ -58,6 +69,7 @@ erDiagram
         timestamp created_at
     }
 
+    eligible_enrollments ||--o| users : "authorizes"
     users ||--o{ events : "creates"
     users ||--o{ event_coordinators : "assigned as collaborator"
     events ||--o{ event_coordinators : "has collaborator"
@@ -69,10 +81,12 @@ erDiagram
 ```
 
 ### 1.1 Integrity Rules
-*   **Users:** User profiles pre-created by System Admin inside Keycloak. On first successful login, they synchronize. Roles are `ADMIN`, `SPOC`, `FACULTY_COORDINATOR`, `STUDENT_COORDINATOR`, `FACULTY`, `STUDENT`.
+*   **Users:** User profiles self-registered. Registration number must exist in the `eligible_enrollments` table and cannot be duplicated. User roles (`STUDENT`, `FACULTY`, `ADMIN`) are synced on registration based on the matching enrollment record.
 *   **Registrations:** Status transitions:
     *   *Free events:* Immediate slot available: `CONFIRMED`. No slot: `WAITING_LIST` -> `CONFIRMED` (upon cancellation dropout promotion).
-    *   *Paid events:* Immediate slot: `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED`. No slot: `WAITING_LIST` -> `PENDING_PAYMENT` (upon cancellation promotion) -> `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED`.
+    *   *Paid events:* Immediate slot: `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED`. No slot: `WAITING_LIST` -> `PENDING_PAYMENT` (upon cancellation promotion) -> `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED` (or `PAYMENT_REJECTED` if re-upload allowed).
+    *   *24-Hour Expiry:* Promoted waiting list registrations in `PENDING_PAYMENT` status automatically transition to `EXPIRED` if payment details are not submitted within 24 hours.
+    *   *12-Hour Re-upload Expiry:* Registrations transitioned to `PAYMENT_REJECTED` automatically transition to `EXPIRED` if valid payment details are not re-submitted within 12 hours from rejection.
 *   **Capacity Constraint:** Active reservation slots count (registrations in `CONFIRMED` or `PENDING_PAYMENT_VERIFICATION` state) must not exceed the event `capacity`.
 
 ---
@@ -85,11 +99,18 @@ To prevent overselling of ticket inventories and manage the FCFS waiting list qu
 ```java
 @Transactional
 public RegistrationResponse registerForEvent(UUID eventId, UUID studentId) {
-    // 1. Lock the event row for updates
+    // 1. Validate user eligibility (Only student roles are allowed to register)
+    User user = userRepository.findById(studentId)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    if (!user.getRole().equals("STUDENT") && !user.getRole().equals("STUDENT_COORDINATOR")) {
+        throw new UnauthorizedException("Only students are eligible to register for events.");
+    }
+
+    // 2. Lock the event row for updates
     Event event = eventRepository.findByIdForUpdate(eventId)
         .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-    // 2. Count active confirmed/pending reservations
+    // 3. Count active confirmed/pending reservations
     long activeReservations = registrationRepository.countActiveReservations(eventId);
 
     Registration registration = new Registration();
@@ -205,7 +226,7 @@ frontend/src/
     }
     ```
 
-### 4.2 Assign Event Collaborator (Assigned Coordinators only)
+### 4.2 Assign Event Collaborator (Creator or SPOC only)
 *   **Path:** `POST /api/events/{eventId}/coordinators`
 *   **Headers:** `Authorization: Bearer <jwt-token>`
 *   **Request JSON:**
@@ -286,12 +307,20 @@ frontend/src/
       "rejectionReason": ""
     }
     ```
-*   **Response JSON (200 OK):**
+*   **Response JSON (200 OK - Approved):**
     ```json
     {
       "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
       "status": "CONFIRMED",
       "message": "Payment verified successfully. Registration is confirmed."
+    }
+    ```
+*   **Response JSON (200 OK - Rejected for Re-upload):**
+    ```json
+    {
+      "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
+      "status": "PAYMENT_REJECTED",
+      "message": "Payment details rejected: Invalid transaction reference. Student has 12 hours to re-upload details."
     }
     ```
 
@@ -332,3 +361,78 @@ frontend/src/
       "status": "PROMOTED"
     }
     ```
+
+### 4.9 User Self-Registration
+*   **Path:** `POST /api/auth/register`
+*   **Request JSON:**
+    ```json
+    {
+      "registrationNumber": "PEC12345",
+      "email": "student@pec.edu",
+      "phoneNumber": "+919876543210",
+      "name": "Jane Doe",
+      "password": "securepassword123"
+    }
+    ```
+*   **Response JSON (201 Created):**
+    ```json
+    {
+      "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
+      "registrationNumber": "PEC12345",
+      "status": "REGISTERED"
+    }
+    ```
+*   **Response JSON (409 Conflict - Registration Number Exists):**
+    ```json
+    {
+      "errorCode": "REGISTRATION_NUMBER_EXISTS",
+      "message": "Registration number already exists. Redirecting to login."
+    }
+    ```
+
+## 5. Redis Caching Specification
+To sustain high concurrency workloads (6,000 users), active event endpoints utilize Redis caching.
+
+### 5.1 Cache Eviction and Key Invalidation Strategy
+- **Key Designations:**
+  - `events::list` -> Caches the list of all active/upcoming events.
+  - `events::detail::{eventId}` -> Caches event details by ID.
+- **Cache Eviction Rules:**
+  - Cache is populated (`@Cacheable`) upon reading `GET /api/events` or `GET /api/events/{id}`.
+  - Cache is evicted (`@CacheEvict`) upon any of the following write operations:
+    - Admin/SPOC/Coordinator publishes or updates an event (`POST /api/events`, `PUT /api/events/{id}`).
+    - A seat booking status updates to `CONFIRMED` or `PENDING_PAYMENT_VERIFICATION` (updates capacity count).
+    - A registration is cancelled, expired, or rejected.
+
+---
+
+## 6. RabbitMQ Messaging Specification
+To prevent slow network I/O from blocking transactions, notification dispatches are managed asynchronously via RabbitMQ.
+
+### 6.1 Exchanges, Queues, and Routing Configuration
+- **Exchange:** `pec.events.exchange` (Type: `topic`)
+- **Queue:** `pec.notifications.queue` (Durable: `true`)
+- **Routing Keys:**
+  - `event.published` -> Sent when a new event is posted.
+  - `registration.status.updated` -> Sent when a registration status updates (e.g., promoted, confirmed, rejected).
+
+### 6.2 Message Payloads
+
+#### Event Published Message
+```json
+{
+  "eventId": "e4b2d8c3-12ab-4bcd-8ef0-1234567890ab",
+  "title": "Hackathon 2026",
+  "action": "PUBLISHED"
+}
+```
+
+#### Registration Status Update Message
+```json
+{
+  "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
+  "studentId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
+  "status": "PENDING_PAYMENT",
+  "details": "Promoted from waiting list. 24 hours to submit payment."
+}
+```

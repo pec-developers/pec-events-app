@@ -8,8 +8,14 @@ Events can only be created by Faculty Coordinators. Faculty Coordinators can ass
 - **THEN** the event record is saved in PostgreSQL with custom metadata, capacity, creator ID, and active registration flags, and the creator is automatically added as a collaborator.
 
 #### Scenario: Collaborative Event Modification
-- **WHEN** an assigned collaborator (Faculty Coordinator or Student Coordinator) updates event parameters or assigns other collaborators
-- **THEN** the changes are saved in PostgreSQL, while unauthorized coordinators are rejected with a `403 Forbidden` error.
+- **WHEN** an assigned collaborator (Faculty Coordinator or Student Coordinator) updates event details (e.g., date, price, capacity)
+- **THEN** the changes are saved successfully in the database.
+
+#### Scenario: Collaborator Management Permissions
+- **WHEN** the original event creator (Faculty Coordinator) or the department SPOC attempts to assign or remove collaborators for the event
+- **THEN** the action is allowed and saved in the database.
+- **WHEN** an assigned collaborator (Faculty or Student Coordinator) who is not the creator or SPOC attempts to add or remove collaborators
+- **THEN** the action is rejected with a `403 Forbidden` error.
 
 #### Scenario: High Concurrency Active Reservation Control
 - **WHEN** multiple concurrent students attempt to register for the last remaining seat in an event

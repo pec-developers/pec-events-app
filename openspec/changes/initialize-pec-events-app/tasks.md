@@ -28,16 +28,19 @@
 - [ ] 4.2 Configure Kong API Gateway routing rules, exposing Keycloak endpoints under `/auth/*` and proxying API endpoints under `/api/*` to EKS backend pods.
 - [ ] 4.3 Implement PKCE login flow in React frontend, saving retrieved JWT access and refresh tokens inside Zustand store `src/stores/authStore.ts`.
 - [ ] 4.4 Set up Kong Gateway rate-limiting and CORS policy plugins for uniform security.
+- [ ] 4.5 Configure Keycloak user self-registration settings mapping registration number, email, and phone number. Setup SMTP settings with Resend.com for Email OTP and deploy custom SMS Authenticator SPI for Twilio for SMS OTP.
 
 ## 5. Backend Base Setup & User Synchronization
 
 - [ ] 5.1 Initialize Spring Boot Web project, configuring build dependencies (Spring Security, Spring Web, OAuth2 Resource Server, PostgreSQL Driver).
 - [ ] 5.2 Configure Spring Security context to decode and validate Keycloak JWT access tokens forwarded by Kong.
-- [ ] 5.3 Implement user profile synchronization handler: on successful user authentication, extract Keycloak claims and write user info (ID, name, email, department, role) to the Supabase PostgreSQL database.
+- [ ] 5.3 Implement user profile synchronization handler: on successful user authentication, extract Keycloak claims and write user info (ID, name, email, phone number, registration number, department, role) to the Supabase PostgreSQL database.
 - [ ] 5.4 Implement Admin SPOC management endpoints: `POST /api/admin/spocs` (assign a user as SPOC for a department).
 - [ ] 5.5 Implement SPOC Coordinator management endpoints: `POST /api/spoc/coordinators` (promote department users to coordinators).
-- [ ] 5.6 Build React Admin and SPOC views using HeroUI showing user lists, department assignments, and promotion buttons.
-- [ ] 5.7 Write Vitest tests for `src/stores/authStore.ts` and JUnit tests for backend security token decode filters.
+- [ ] 5.6 Implement database profile sync validations in Spring Boot (checking that registration number exists in eligible_enrollments list, rejecting if not).
+- [ ] 5.7 Build React Admin and SPOC views using HeroUI showing user lists, department assignments, and promotion buttons.
+- [ ] 5.8 Integrate forgot password flows redirecting user to Keycloak's OTP-based recovery pages.
+- [ ] 5.9 Write Vitest tests for `src/stores/authStore.ts` and JUnit tests for backend security token decode filters.
 
 ## 6. Event Creation & High-Concurrency Capacity Control
 
@@ -46,12 +49,13 @@
 - [ ] 6.3 Implement `event_coordinators` many-to-many relationship and endpoints to assign/remove collaborators on events.
 - [ ] 6.4 Implement database transaction logic utilizing `SELECT ... FOR UPDATE` (row-level locking) when reserving seats to ensure FCFS order and prevent ticket overselling.
 - [ ] 6.5 Write integration tests (Spring Boot Test + Testcontainers/PostgreSQL) validating that concurrent requests for event slots respect capacity constraints.
-- [ ] 6.6 Build React dashboard pages for coordinators to create events, manage collaborator lists, and edit assigned events using HeroUI components.
+- [ ] 6.6 Configure Redis cache inside Spring Boot using `@Cacheable` for event discovery listings and `@CacheEvict` for event write/status updates.
+- [ ] 6.7 Build React dashboard pages for coordinators to create events, manage collaborator lists, and edit assigned events using HeroUI components.
 
 ## 7. Registrations & FCFS Waiting List (V1)
 
 - [ ] 7.1 Create test case specifications for free/paid registration and waiting list workflows.
-- [ ] 7.2 Implement Spring Boot endpoint `POST /api/events/{eventId}/register` to process registrations. If capacity limit is reached, place the registration in the `WAITING_LIST` state (deferring payment for paid events).
+- [ ] 7.2 Implement Spring Boot endpoint `POST /api/events/{eventId}/register` to process registrations. Validate that the user is a student; if capacity limit is reached, place the registration in the `WAITING_LIST` state (deferring payment for paid events).
 - [ ] 7.3 Implement cancellation/dropout endpoint: `POST /api/registrations/{registrationId}/cancel` that triggers a database transaction to cancel the reservation and automatically promote the oldest waiting list entry.
 - [ ] 7.4 Implement payment upload endpoint for promoted waiting list students: `POST /api/registrations/{registrationId}/submit-payment` which takes screenshots and uploads them to AWS S3, transitioning status to `PENDING_PAYMENT_VERIFICATION`.
 - [ ] 7.5 Build React registration views for students showcasing waiting list placement notifications, cancel registration actions, and delayed UPI payment modals.
@@ -68,10 +72,12 @@
 
 - [ ] 9.1 Design push notification subscription and service worker test specifications.
 - [ ] 9.2 Implement backend endpoints for registering Web Push subscriptions.
-- [ ] 9.3 Implement backend push notification service utilizing VAPID keys to sign and dispatch payloads.
-- [ ] 9.4 Register and script PWA service worker in React frontend to listen for background push messages and trigger OS-level notification boxes.
-- [ ] 9.5 Integrate push alert triggers: dispatch alerts automatically when a waiting list student is promoted (`CONFIRMED` or `PENDING_PAYMENT`).
-- [ ] 9.6 Write integration tests for push notification dispatches.
+- [ ] 9.3 Setup RabbitMQ exchanges and queues for event publishing and registration status updates.
+- [ ] 9.4 Implement RabbitMQ message publishers and listeners in Spring Boot to decouple notification dispatches.
+- [ ] 9.5 Implement backend push notification service utilizing VAPID keys to sign and dispatch payloads (triggered by RabbitMQ listeners).
+- [ ] 9.6 Register and script PWA service worker in React frontend to listen for background push messages and trigger OS-level notification boxes.
+- [ ] 9.7 Integrate push alert triggers: publish RabbitMQ messages automatically when a waiting list student is promoted (`CONFIRMED` or `PENDING_PAYMENT`).
+- [ ] 9.8 Write integration tests for RabbitMQ event queuing and push notification dispatches.
 
 ## 10. End-to-End Verification & Deployments
 

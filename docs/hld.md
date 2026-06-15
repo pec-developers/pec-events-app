@@ -13,10 +13,17 @@ graph TD
     subgraph EKS [AWS EKS Cluster]
         Kong -->|Proxy /auth/*| Keycloak[Keycloak IAM]
         Kong -->|Proxy /api/*| SpringBoot[Spring Boot Backend]
+        SpringBoot -->|Read/Write Cache| Redis[(Redis Cache)]
+        SpringBoot -->|Publish Events| RabbitMQ{RabbitMQ Broker}
+        RabbitMQ -->|Consume Events| NotificationWorker[Notification Service / Spring Boot Worker]
     end
+    
+    Keycloak -->|Send Email OTP| Resend[Resend.com SMTP]
+    Keycloak -->|Send SMS OTP| Twilio[Twilio SMS API]
     
     SpringBoot -->|Store/Query| Supabase[(Supabase Cloud PostgreSQL)]
     SpringBoot -->|Upload screenshots| S3[(AWS S3 Bucket)]
+    NotificationWorker -->|Push Notifications| User
 ```
 
 ### 1.1 Infrastructure Components
@@ -24,6 +31,8 @@ graph TD
 *   **Infrastructure as Code (IaC):** Terraform scripts provision the network subnets (VPC), Route 53 DNS records, the S3 bucket for screenshots, and the EKS clusters.
 *   **EKS Kubernetes Deployments:** Deployed via Helm charts using isolated deployment configurations (`values-dev.yaml` and `values-prod.yaml`).
 *   **Managed Database:** PostgreSQL schemas are provisioned and hosted on managed Supabase Cloud.
+*   **Asynchronous Message Broker (RabbitMQ):** Deployed inside the EKS cluster (via Helm/Operator) to handle event-driven decoupling and queuing of notification dispatches.
+*   **In-Memory Caching (Redis):** Deployed inside EKS to cache frequent queries (like event listings) and handle temporary rate-limiting.
 
 ---
 
@@ -32,9 +41,10 @@ graph TD
 To secure user access, the application implements the **Authorization Code Flow with Proof Key for Code Exchange (PKCE)**. 
 
 ### 2.1 Role Creation & Assignment Flow
-1.  **Account Pre-creation:** The System Admin pre-creates Keycloak user logins for students and faculty.
-2.  **SPOC Assignment:** The Admin assigns the `SPOC` role to specific faculty members in Keycloak and binds them to a specific department in the database.
-3.  **Coordinator Promotion:** Department SPOCs use a dashboard to assign coordinator roles to users within their department (demanding `FACULTY_COORDINATOR` or `STUDENT_COORDINATOR` mappings depending on profile type).
+1.  **Account Self-Registration:** Students and Faculty register themselves within the application using their registration number, email, and phone number. Keycloak handles the registration. If the registration number already exists, Keycloak redirects the user back to the login screen.
+2.  **Forgot Password (OTP Recovery):** Users can recover their passwords via a "Forgot Password" link on the login screen, prompting an OTP dispatch to either their registered Email or Phone Number (SMS).
+3.  **SPOC Assignment:** The Admin assigns the `SPOC` role to specific faculty members in Keycloak and binds them to a specific department in the database.
+4.  **Coordinator Promotion:** Department SPOCs use a dashboard to assign coordinator roles to users within their department (demanding `FACULTY_COORDINATOR` or `STUDENT_COORDINATOR` mappings depending on profile type).
 
 ```mermaid
 sequenceDiagram
@@ -43,13 +53,26 @@ sequenceDiagram
     participant App as React Frontend
     participant Kong as Kong API Gateway
     participant Keycloak as Keycloak
+    participant Resend as Resend.com
+    participant Twilio as Twilio
     participant Backend as Spring Boot Backend
     participant DB as Supabase DB
 
-    User->>App: Clicks Login
-    App->>Keycloak: Redirect to Login with Code Challenge (via Kong /auth/*)
-    Keycloak->>User: Present Login Form (Pre-created Credentials)
-    User->>Keycloak: Submits pre-created Credentials
+    User->>App: Clicks Login / Register
+    App->>Keycloak: Redirect to Keycloak with Code Challenge (via Kong /auth/*)
+    Keycloak->>User: Present Login / Registration Form
+    User->>Keycloak: Submits registration info OR logs in
+    alt Forgot Password Request
+        User->>Keycloak: Clicks Forgot Password & Requests OTP
+        alt Choose Email Channel
+            Keycloak->>Resend: Request SMTP Dispatch
+            Resend->>User: Deliver Reset OTP Email
+        else Choose Phone Channel
+            Keycloak->>Twilio: Request SMS API Dispatch
+            Twilio->>User: Deliver Reset OTP SMS
+        end
+        User->>Keycloak: Submits OTP & Resets Password
+    end
     Keycloak->>App: Redirect back with Authorization Code
     App->>Keycloak: Request Token with Auth Code + Code Verifier
     Keycloak->>App: Return JWT Access & Refresh Tokens
@@ -61,7 +84,7 @@ sequenceDiagram
         note over Backend, DB: First-time Login Profile Sync
         Backend->>DB: Check if User ID exists
         alt User profile missing
-            Backend->>DB: Synchronize user info (ID, name, email, department, role)
+            Backend->>DB: Synchronize user info (ID, name, email, phone_number, registration_number, department, role)
         end
     end
     

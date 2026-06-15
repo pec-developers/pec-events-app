@@ -18,3 +18,11 @@ Coordinators assigned to an event can view payment details to verify and approve
 #### Scenario: Student Dropout Triggers Paid Event Promotion
 - **WHEN** a student cancels a `CONFIRMED` registration on a paid event with a waiting list
 - **THEN** the oldest `WAITING_LIST` registration is automatically promoted to `PENDING_PAYMENT` and sent a push notification requesting payment details.
+
+#### Scenario: Promoted Student Fails to Submit Payment Within 24 Hours
+- **WHEN** a registration remains in `PENDING_PAYMENT` state for more than 24 hours after promotion
+- **THEN** the registration status transitions to `EXPIRED` and the system automatically promotes the next student in the FCFS waiting list queue.
+
+#### Scenario: Coordinator Rejects Payment with Re-upload Option
+- **WHEN** an assigned Coordinator rejects a payment screenshot/transaction detail
+- **THEN** the registration transitions to a status allowing re-upload (e.g. `PAYMENT_REJECTED`), a notification is sent to the student, and they are granted a 12-hour grace period to re-submit details before the registration is marked as `EXPIRED` and the slot is released.

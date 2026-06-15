@@ -10,27 +10,29 @@ Prathyusha Engineering College (PEC) requires a Progressive Web App (PWA) to ser
 *   **Real-time Alerts:** Notify students of new events or registration status updates via PWA push notifications.
 
 ## 3. User Roles & Access Control Policy
-The application supports five distinct user roles with hierarchical authority. Students and Faculty utilize existing accounts pre-created by the System Admin.
+The application supports six distinct user roles with hierarchical authority. Students and Faculty self-register by providing their registration number, email, and phone number, which is matched against a pre-loaded enrollment database.
 
 | Role | Description / Permissions |
 | :--- | :--- |
-| **Student / Participant** | - Logs in using pre-created student accounts.<br>- Browse events, view schedules, and register.<br>- Joins the First-Come, First-Served (FCFS) Waiting List if the event is at full capacity.<br>- For paid events, submits UPI transaction screenshots and IDs after promotion.<br>- Receives push notifications. |
-| **Student Coordinator** | - Promoted from Student by the department SPOC.<br>- Assigned as event collaborator by Faculty or other assigned coordinators.<br>- Modify details and manage registrations (verify payments/approve) *only* for assigned events. |
-| **Faculty Coordinator** | - Promoted from Faculty by the department SPOC.<br>- Post/create new department events.<br>- Assigned as event collaborator; can modify details, manage registrations, and add/remove other collaborators on assigned events. |
-| **SPOC (Single Point of Contact)** | - Created and marked by the System Admin (one SPOC per academic department).<br>- Promote/demote department Faculty and Students to Coordinator status.<br>- View audit logs and active events within their department. |
-| **System Admin** | - Pre-creates and manages user logins (Keycloak accounts) for students and faculty.<br>- Assigns and configures the department SPOC users.<br>- Configures system authentication, Kong API Gateway configurations, and infrastructure monitoring. |
+| **Student / Participant** | - Registers by matching registration number against the enrollment database.<br>- Browse events, view schedules, and register.<br>- Joins the First-Come, First-Served (FCFS) Waiting List if the event is at full capacity.<br>- For paid events, submits UPI transaction details within 24 hours of promotion.<br>- Receives push notifications. |
+| **Faculty (Non-Coordinator)** | - Registers by matching registration number against the enrollment database.<br>- Browse events and view schedules.<br>- Cannot register or participate in events.<br>- Receives push notifications for new events. |
+| **Student Coordinator** | - Promoted from Student by the department SPOC.<br>- Assigned as event collaborator by Faculty Coordinators or SPOC.<br>- Modify event details and manage registrations *only* for assigned events.<br>- Cannot manage (add/remove) other event collaborators. |
+| **Faculty Coordinator** | - Promoted from Faculty by the department SPOC.<br>- Post/create new department events.<br>- Assigned as event collaborator; can modify details, manage registrations, and manage (add/remove) other collaborators on assigned events. |
+| **SPOC (Single Point of Contact)** | - Created and marked by the System Admin (one SPOC per academic department).<br>- Promote/demote department Faculty and Students to Coordinator status.<br>- Manage (add/remove) collaborators on any active department event.<br>- View audit logs and active events within their department. |
+| **System Admin** | - Uploads pre-seeded enrollment lists (CSV) of valid registration numbers.<br>- Manages user accounts and configures Keycloak realm.<br>- Assigns and configures the department SPOC users.<br>- Configures gateway routes, rate-limits, and infrastructure monitoring. |
 
 ## 4. Phase Boundaries (V1 vs. V2)
 
 ### Phase 1 (V1) - Current Scope
-*   **FCFS Waiting List & Dropout Flow:** If event capacity is full, registrations are placed in a `WAITING_LIST` state. When a `CONFIRMED` student cancels registration, the oldest waiting list student (by `created_at` ASC) is automatically promoted:
+*   **Self-Registration with Unique ID Check:** Verification of self-registering users against a pre-seeded enrollment list. If the registration number is already in use, they are redirected to the login screen. Forgot password OTP recovery is sent to their registered email or phone directly through Keycloak using Resend.com and Twilio APIs.
+*   **FCFS Waiting List & Promotion Limit:** If event capacity is full, registrations are placed in a `WAITING_LIST` state. When a confirmed registration cancels, the oldest waiting list registration is automatically promoted:
     *   *Free Event:* Promoted directly to `CONFIRMED`.
-    *   *Paid Event:* Promoted to `PENDING_PAYMENT` (notified to submit payment).
-*   **Manual UPI Payments:** System displays a static UPI QR code to students with `CONFIRMED` slots (or promoted waiting list students). The student submits the 12-digit transaction ID and uploads a payment verification screenshot.
-*   **Manual Coordinator Verification:** Coordinators assigned to an event review transaction screenshots and Reference IDs from a dashboard, manually clicking Approve/Reject.
+    *   *Paid Event:* Promoted to `PENDING_PAYMENT`. The student has a **24-hour time limit** to submit payment details, after which they are automatically cancelled and the next waiting list student is promoted.
+*   **Manual UPI Payments:** QR code payment submission modal for active or promoted students.
+*   **Manual Coordinator Verification:** Assigned collaborators (or SPOC) verify transaction details.
 *   **Hierarchical User Management:** Admin creates SPOCs; SPOCs promote/demote Coordinators.
-*   **Core Event & Slot Management:** Event creation (Faculty Coordinator only), collaborator assignments, capacity caps, and row-level locking to prevent overselling.
-*   **PWA Web Push Notifications:** Notification registration via Service Workers to alert users upon promotion and registration status updates.
+*   **Core Event & Slot Management:** Event creation (Faculty Coordinator only), collaborator assignments (Faculty Coordinators & SPOC only), capacity caps, and row-level locking.
+*   **PWA Web Push Notifications:** OS-level notifications for waiting list promotions and status updates.
 
 ### Phase 2 (V2) - Future Enhancements
 *   **Razorpay Gateway Integration:** Direct online checkout without screenshot uploads or manual validation.

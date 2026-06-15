@@ -3,23 +3,33 @@
 ## 1. Scope of Features
 
 ### 1.1 User Registration & Profile Synchronization
-*   **Authentication Portal:** Keycloak coordinates authentication. Users can register using any email domain.
-*   **Automatic Profile Sync:** On successful login, the frontend sends the JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `department`, and `role`.
+*   **Authentication & Self-Registration Portal:** Keycloak coordinates authentication. Users self-register inside the app by providing:
+    1. `registration_number` (unique institutional ID)
+    2. `email`
+    3. `phone_number`
+    4. `password`
+*   **Registration Verification:** If the `registration_number` is already registered, the application immediately redirects the user to the login screen with a message stating that the registration number is already in use.
+*   **Password Recovery (OTP):** In case of a forgotten password, the login screen redirects to Keycloak's recovery portal. Keycloak dispatches a reset One-Time Password (OTP) or reset link directly using **Resend.com** (for email channels) and **Twilio** (via a custom SMS authenticator SPI for phone channels).
+*   **Automatic Profile Sync:** On successful login, the frontend sends the JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `phone_number`, `registration_number`, `department`, and `role`.
+*   **Redis Cache System:** High-concurrency event discovery requests (listing and detail queries) are cached in Redis to decrease response times and prevent PostgreSQL database connection limits from being saturated during peaks.
+*   **RabbitMQ Message Queue:** Decouples the main transactional thread from I/O heavy notification dispatches. Status changes publish events to RabbitMQ, where a consumer consumes and executes Web Push alerts asynchronously.
 
 ### 1.2 Event Listing & Discovery
-*   **Discovery Board:** Authenticated students can view active/upcoming events.
+*   **Discovery Board:** Authenticated students and faculty can browse and view active/upcoming events.
 *   **Metadata Display:** Events display title, banner image, date, description, coordinator details, price, remaining seats, and registration deadline.
 
 ### 1.3 Event Creation (Coordinators)
 *   **Publishing Interface:** Only Faculty Coordinators can create and publish new events.
-*   **Collaborative Management:** When creating an event, the Faculty Coordinator is marked as the creator. They (or other assigned coordinators) can assign other Faculty or Student Coordinators of their department as collaborators/coordinators on the event.
+*   **Collaborative Management:** When creating an event, the Faculty Coordinator is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event. Student Coordinators do NOT have permissions to manage (add or remove) collaborators on the event.
 *   **Event Modification:** Any coordinator assigned to an event has full modification permissions to edit details, manage registrations, and verify payments.
 *   **Parameters:** Configurable capacity limits, price, active flags, and UPI payment details.
 *   **Overbooking Control:** Enforce strict capacity caps using Postgres row-level locks when seat allocations or registrations occur.
 
 ### 1.4 Ticket Booking & Payment Submission (V1)
+*   **Eligibility Boundary:** Only student roles (`STUDENT` and `STUDENT_COORDINATOR`) are eligible to register and participate in events. Faculty roles (`FACULTY`, `FACULTY_COORDINATOR`, and `SPOC`) can browse and view events but are blocked from registering/participating.
 *   **Capacity Checks:** The system counts active reservations as registrations in `CONFIRMED` or `PENDING_PAYMENT_VERIFICATION` states. If this count is equal to or greater than the event's capacity, new registrations are placed in the `WAITING_LIST` state.
 *   **Free Events:**
+
     *   *Slots Available:* Immediate registration. Status is set to `CONFIRMED`.
     *   *Slots Full:* Registration is placed in `WAITING_LIST`.
 *   **Paid Events:**
@@ -49,7 +59,9 @@
     *   *Free Event:* Promoted registration status changes to `CONFIRMED`. Send success push notification.
     *   *Paid Event:* Promoted registration status changes to `PENDING_PAYMENT`. Send push notification requesting payment.
     *   *No Waiting List:* Available slots are incremented by 1.
-*   **Promoted Payment Submission:** A student whose registration transitions to `PENDING_PAYMENT` is prompted to pay. They scan the UPI QR code, pay, and upload their transaction ID and payment screenshot. This transitions their registration status to `PENDING_PAYMENT_VERIFICATION` for coordinator approval.
+*   **Promoted Payment Submission & Expiry:** A student whose registration transitions to `PENDING_PAYMENT` is prompted to pay. They scan the UPI QR code, pay, and upload their transaction ID and payment screenshot. This transitions their registration status to `PENDING_PAYMENT_VERIFICATION` for coordinator approval.
+    *   *24-Hour Expiry Window:* The promoted student has exactly **24 hours** from the promotion timestamp to submit their transaction details and screenshot. If they do not upload payment details within 24 hours, their registration status is updated to `EXPIRED` (or cancelled) and the backend automatically triggers the promotion of the next FCFS waiting list student.
+    *   *Payment Rejection & Re-upload Grace Period:* If a coordinator rejects a student's uploaded payment details, the registration status transitions to `PAYMENT_REJECTED` and a push notification is sent to the student. The student is granted a **12-hour grace period** from the rejection timestamp to re-upload valid payment details. If they fail to re-submit details within 12 hours, the registration is updated to `EXPIRED` and the backend automatically promotes the next student in the FCFS waiting list queue.
 
 ## 2. Core User Flows
 

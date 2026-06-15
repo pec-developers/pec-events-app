@@ -18,3 +18,7 @@ Students can register for events. If capacity is available, they transition to c
 #### Scenario: Payment Screenshot S3 Upload
 - **WHEN** a student submits their payment screenshot payload (either during active registration or after waiting list promotion)
 - **THEN** the Spring Boot backend uploads the file directly to the provisioned AWS S3 bucket and records the S3 object URL in the registration audit table, transitioning status to `PENDING_PAYMENT_VERIFICATION`.
+
+#### Scenario: Faculty Member Registration Rejection
+- **WHEN** an authenticated faculty member (including Non-Coordinators, Coordinators, and SPOCs) attempts to register for an event
+- **THEN** their request is rejected with a `403 Forbidden` error, stating that only students are eligible to participate.

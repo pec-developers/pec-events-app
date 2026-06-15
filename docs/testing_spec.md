@@ -51,6 +51,24 @@ flowchart LR
     4.  Attempt demotion from SPOC. Verify role reverts to `STUDENT`.
 *   **Expected Result:** Roles update successfully, and auth context updates. SPOC from CSE cannot promote ECE students (enforces department boundary).
 
+#### TC-AUTH-03: Self-Registration Duplicate Registration Number
+*   **Description:** Validate that registering with an already existing registration number rejects the request and prompts login redirect.
+*   **Preconditions:** User profile exists with registration number `PEC12345`.
+*   **Test Steps:**
+    1.  Submit self-registration payload with registration number `PEC12345`.
+    2.  Verify the response status and payload error code.
+*   **Expected Result:** The request is rejected with `409 Conflict` and error code `REGISTRATION_NUMBER_EXISTS`. The client redirects to the login view.
+
+#### TC-AUTH-04: Forgot Password OTP Dispatch & Reset (Email/SMS)
+*   **Description:** Validate that Keycloak dispatches OTP/reset link through Resend.com and Twilio.
+*   **Preconditions:** Keycloak is configured with Resend.com SMTP and the Twilio SMS Authenticator SPI. User profile exists with registration number `PEC12345`, email `student@pec.edu`, and phone `+919876543210`.
+*   **Test Steps:**
+    1.  User clicks "Forgot Password" on login screen, redirecting to Keycloak recovery screen.
+    2.  Select `Email` reset: Keycloak dispatches reset link/code via Resend.com SMTP relay. Verify SMTP payload.
+    3.  Select `Phone` reset: Keycloak dispatches OTP via Twilio SMS SPI. Verify mock SMS gateway receipt.
+    4.  Verify OTP input completes reset and redirects user to login screen.
+*   **Expected Result:** Keycloak recovers password using the correct provider SMTP/SMS APIs, updating password context in Keycloak.
+
 ---
 
 ### 3.2 High-Concurrency Slot Control (TC-CONCUR)
@@ -104,6 +122,42 @@ flowchart LR
     4.  Student B calls `POST /api/registrations/{id}/submit-payment` uploading screenshot and txn ID.
 *   **Expected Result:** Student B's status becomes `PENDING_PAYMENT_VERIFICATION` for the coordinator to approve.
 
+#### TC-REG-05: Faculty Registration Rejected
+*   **Description:** Ensure that faculty accounts cannot register for events.
+*   **Preconditions:** An active event exists. A user exists with a faculty-related role (`FACULTY`, `FACULTY_COORDINATOR`, or `SPOC`).
+*   **Test Steps:**
+    1.  Faculty user submits a registration request to `POST /api/events/{eventId}/register`.
+    2.  Assert response status.
+*   **Expected Result:** The request is rejected with a `403 Forbidden` error and the event capacity is not modified.
+
+#### TC-REG-06: FCFS Waiting List Paid Event 24-Hour Promotion Expiry
+*   **Description:** Validate that a waiting-list student promoted to PENDING_PAYMENT gets expired after 24 hours if they do not submit payment.
+*   **Preconditions:** A student registration status is `PENDING_PAYMENT` with a promotion timestamp older than 24 hours. Another student registration status is `WAITING_LIST` on the same event.
+*   **Test Steps:**
+    1.  Trigger the automated Spring Boot backend scheduled task.
+    2.  Assert the expired student's registration status.
+    3.  Assert the next waiting list student's registration status.
+*   **Expected Result:** The expired student's registration is updated to `EXPIRED`. The next student's registration is automatically updated to `PENDING_PAYMENT`, and a push notification is sent to them.
+
+#### TC-REG-07: FCFS Waiting List Payment Re-upload Grace Period
+*   **Description:** Validate that a payment rejection transitions to PAYMENT_REJECTED and grants a 12-hour grace period before expiring.
+*   **Preconditions:** A registration status is `PENDING_PAYMENT_VERIFICATION`.
+*   **Test Steps:**
+    1.  An assigned coordinator rejects the payment. Verify status transitions to `PAYMENT_REJECTED`.
+    2.  Wait/Mock passage of time past 12 hours without re-upload.
+    3.  Trigger the backend scheduled task.
+*   **Expected Result:** On rejection, registration is marked `PAYMENT_REJECTED`. If 12 hours pass without a re-upload, status transitions to `EXPIRED` and the next waiting list student is promoted.
+
+#### TC-REG-08: Collaborator Management Access Boundaries
+*   **Description:** Verify that only the original event creator or department SPOC can manage collaborators.
+*   **Preconditions:** An event created by Faculty Coordinator A exists. Faculty Coordinator B is assigned as a collaborator on the event.
+*   **Test Steps:**
+    1.  Faculty Coordinator B attempts to assign Student Coordinator C as a collaborator on the event.
+    2.  Assert response status.
+    3.  Faculty Coordinator A (creator) attempts to assign Student Coordinator C.
+    4.  Assert response status.
+*   **Expected Result:** Faculty Coordinator B's request is rejected with `403 Forbidden`. Faculty Coordinator A's request is accepted with `200 OK`.
+
 ---
 
 ### 3.4 Web Push Alerts (TC-PUSH)
@@ -116,3 +170,31 @@ flowchart LR
     2.  Send subscription details to backend endpoint.
     3.  Trigger status update from backend to `CONFIRMED`.
 *   **Expected Result:** Service worker intercepts signed VAPID payload and raises OS-level notification.
+
+
+---
+
+### 3.5 Asynchronous Message Queuing (TC-MSG)
+
+#### TC-MSG-01: RabbitMQ Notification Event Queuing and Consumption
+*   **Description:** Validate that publishing an event sends a message to RabbitMQ, which is consumed to send a push notification.
+*   **Preconditions:** RabbitMQ is running. The notification queue is active.
+*   **Test Steps:**
+    1.  Publish a new event via the backend.
+    2.  Assert that a message is successfully published to `pec.events.exchange` with routing key `event.published`.
+    3.  Verify that the notification listener consumes the message and dispatches push alerts to registered devices.
+*   **Expected Result:** Message is queued, consumed asynchronously, and push alerts are successfully dispatched.
+
+---
+
+### 3.6 In-Memory Caching (TC-CACHE)
+
+#### TC-CACHE-01: Redis Cache Hit and Invalidation
+*   **Description:** Verify that event query results are cached in Redis and invalidated on update actions.
+*   **Preconditions:** Redis cache is active and empty.
+*   **Test Steps:**
+    1.  Request `GET /api/events` (Event listing). Assert database is queried.
+    2.  Request `GET /api/events` again. Assert response is served from Redis (no DB hit).
+    3.  Publish a new event (`POST /api/events`).
+    4.  Request `GET /api/events` again. Assert database is queried again and cache is refilled.
+*   **Expected Result:** The subsequent listing hits the cache, and writes invalidate the cache key `events::list` immediately.

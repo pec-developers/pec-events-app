@@ -22,9 +22,9 @@ This change initializes the PEC Events Notification and Management application l
 ## Capabilities
 
 ### New Capabilities
-- `user-authentication`: Multi-role login using pre-created student/faculty credentials via Keycloak (OAuth2 Auth Code + PKCE) behind Kong, syncing profiles to Supabase. Supports hierarchical role assignment (Admin assigns department SPOCs; SPOCs promote/demote department Coordinators).
+- `user-authentication`: Multi-role login and self-registration using registration number, email, and phone number via Keycloak behind Kong. Redirects existing registration numbers to the login screen and supports password recovery via Keycloak OTP dispatched through Resend.com (Email) and Twilio (SMS).
 - `event-management`: Interfaces for Faculty Coordinators to post events and assign collaborators (other Faculty/Student Coordinators). Collaborators have edit rights over assigned events.
-- `event-registration`: Browse events list and register. Automatically places users on a First-Come, First-Served (FCFS) Waiting List once capacity limit is reached.
+- `event-registration`: Browse events list and register. Restricts registration eligibility to students, and automatically places users on a First-Come, First-Served (FCFS) Waiting List once capacity limit is reached.
 - `waiting-list-promotion`: Database transaction logic that, upon user cancellation, promotes the oldest waiting list student (immediately confirmed for free events, or placed in `PENDING_PAYMENT` requesting payment upload for paid events).
 - `payment-verification`: Management dashboard allowing assigned event coordinators to view, audit, and verify/approve UPI payment screenshots and registrations.
 - `pwa-notifications`: Web Push API implementation using Service Workers and VAPID keys to send real-time OS-level push notifications to participants when promoted, registration status updates, or new events are published.
@@ -37,5 +37,5 @@ This change initializes the PEC Events Notification and Management application l
 - **Frontend:** Adds directories/routes for SPOC dashboard (coordinator management) and collaborator management under `src/pages/`, plus updates to registration forms for FCFS Waiting List visual indicators and delayed payment submission.
 - **Backend:** Introduces many-to-many `event_coordinators` mapping, SPOC management APIs, registration cancellation endpoints, and high-concurrency FCFS waiting list promotion transactional services.
 - **Database & Storage:** Updates schemas for `users` roles, adds `event_coordinators` table, and expands registration states in Supabase.
-- **Infrastructure:** Adds Terraform definitions for AWS resources (EKS, S3, CloudFront, Route 53) and deployment Helm charts.
-- **Documentation:** Initializes BRD, PRD, HLD, LLD, and STLC Test Specs under the `docs/` folder, aligned with the hierarchical flow and waiting list designs.
+- **Infrastructure:** Adds Terraform definitions for AWS resources (EKS, S3, CloudFront, Route 53) and deployment Helm charts including Redis (caching) and RabbitMQ (messaging queue) cluster deployments.
+- **Documentation:** Initializes BRD, PRD, HLD, LLD, and STLC Test Specs under the `docs/` folder, aligned with the hierarchical flow, waiting list, messaging, and caching designs.
