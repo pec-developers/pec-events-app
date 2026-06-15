@@ -22,19 +22,20 @@ This change initializes the PEC Events Notification and Management application l
 ## Capabilities
 
 ### New Capabilities
-- `user-authentication`: Multi-role login and registration using Keycloak (OAuth2 Authorization Code + PKCE) mapped behind the Kong Gateway, with basic profile sync to Supabase PostgreSQL on successful login.
-- `event-management`: Interfaces for Faculty and Student Coordinators to create, publish, and update free and paid events.
-- `event-registration`: Browse events list and register. For paid events, allows students to submit UPI transaction details and upload payment confirmation screenshots.
-- `payment-verification`: Management dashboard allowing both Student and Faculty Coordinators to view, audit, and verify/approve UPI payment screenshots and registrations.
-- `pwa-notifications`: Web Push API implementation using Service Workers and VAPID keys to send real-time OS-level push notifications to participants when registrations are approved or new events are published.
+- `user-authentication`: Multi-role login using pre-created student/faculty credentials via Keycloak (OAuth2 Auth Code + PKCE) behind Kong, syncing profiles to Supabase. Supports hierarchical role assignment (Admin assigns department SPOCs; SPOCs promote/demote department Coordinators).
+- `event-management`: Interfaces for Faculty Coordinators to post events and assign collaborators (other Faculty/Student Coordinators). Collaborators have edit rights over assigned events.
+- `event-registration`: Browse events list and register. Automatically places users on a First-Come, First-Served (FCFS) Waiting List once capacity limit is reached.
+- `waiting-list-promotion`: Database transaction logic that, upon user cancellation, promotes the oldest waiting list student (immediately confirmed for free events, or placed in `PENDING_PAYMENT` requesting payment upload for paid events).
+- `payment-verification`: Management dashboard allowing assigned event coordinators to view, audit, and verify/approve UPI payment screenshots and registrations.
+- `pwa-notifications`: Web Push API implementation using Service Workers and VAPID keys to send real-time OS-level push notifications to participants when promoted, registration status updates, or new events are published.
 
 ### Modified Capabilities
 *None (Initial application bootstrap).*
 
 ## Impact
 
-- **Frontend:** Introduces new structures under `frontend/src/api/`, `frontend/src/stores/`, `frontend/src/components/`, and `frontend/src/pages/`.
-- **Backend:** Initial Spring Boot API modules, database schemas, and integration points with Kong API Gateway.
-- **Database & Storage:** Configures local PostgreSQL schemas in Supabase and provisioned AWS S3 buckets for transaction screenshots.
+- **Frontend:** Adds directories/routes for SPOC dashboard (coordinator management) and collaborator management under `src/pages/`, plus updates to registration forms for FCFS Waiting List visual indicators and delayed payment submission.
+- **Backend:** Introduces many-to-many `event_coordinators` mapping, SPOC management APIs, registration cancellation endpoints, and high-concurrency FCFS waiting list promotion transactional services.
+- **Database & Storage:** Updates schemas for `users` roles, adds `event_coordinators` table, and expands registration states in Supabase.
 - **Infrastructure:** Adds Terraform definitions for AWS resources (EKS, S3, CloudFront, Route 53) and deployment Helm charts.
-- **Documentation:** Initializes BRD, PRD, HLD, and LLD in the `docs/` folder.
+- **Documentation:** Initializes BRD, PRD, HLD, LLD, and STLC Test Specs under the `docs/` folder, aligned with the hierarchical flow and waiting list designs.

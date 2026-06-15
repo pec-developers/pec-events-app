@@ -41,6 +41,16 @@ flowchart LR
     3.  Query the local database `users` table for the matching user ID.
 *   **Expected Result:** A new row is successfully created in the database containing the matching profile metadata.
 
+#### TC-AUTH-02: SPOC Assignment and Coordinator Promotion Flow
+*   **Description:** Verify Admin can assign a SPOC and SPOC can promote/demote department users.
+*   **Preconditions:** System Admin account exists. Target Student and Faculty profiles exist in the database.
+*   **Test Steps:**
+    1.  Admin requests `POST /api/admin/spocs` to make the Faculty user a SPOC for "CSE". Verify role in DB.
+    2.  As SPOC, request `POST /api/spoc/coordinators` to promote CSE Student to `STUDENT_COORDINATOR`.
+    3.  Verify the Student's role in the DB becomes `STUDENT_COORDINATOR`.
+    4.  Attempt demotion from SPOC. Verify role reverts to `STUDENT`.
+*   **Expected Result:** Roles update successfully, and auth context updates. SPOC from CSE cannot promote ECE students (enforces department boundary).
+
 ---
 
 ### 3.2 High-Concurrency Slot Control (TC-CONCUR)
@@ -64,16 +74,35 @@ flowchart LR
 *   **Test Steps:**
     1.  Authenticated Student submits registration request.
     2.  Assert database actions and response.
-*   **Expected Result:** Registration status is immediately set to `CONFIRMED`. Event capacity decrements immediately.
+*   **Expected Result:** Registration status is immediately set to `CONFIRMED`.
 
 #### TC-REG-02: Paid Event Registration Phasing
 *   **Description:** Ensure paid registrations go to a pending state until verified.
-*   **Preconditions:** Event is paid (`price = 250.00`).
+*   **Preconditions:** Event is paid (`price = 250.00`) and has slots available.
 *   **Test Steps:**
     1.  Student uploads screenshot and enters a 12-digit transaction Reference ID.
     2.  Assert status immediately.
     3.  Coordinator logs in, accesses dashboard queue, and approves registration.
-*   **Expected Result:** Upon submission, the registration status is set to `PENDING_PAYMENT_VERIFICATION`. After Coordinator approval, the status transitions to `CONFIRMED` and the event capacity is decremented by 1.
+*   **Expected Result:** Upon submission, the registration status is set to `PENDING_PAYMENT_VERIFICATION`. After Coordinator approval, the status transitions to `CONFIRMED`.
+
+#### TC-REG-03: FCFS Waiting List Free Event Promotion
+*   **Description:** Verify that when a free event is full, registrations go to the waiting list and promote on cancellation.
+*   **Preconditions:** A free event has capacity = 2, with 2 confirmed registrations.
+*   **Test Steps:**
+    1.  Student A registers. Assert response status is `WAITING_LIST`.
+    2.  One of the confirmed students cancels registration (`POST /api/registrations/{id}/cancel`).
+    3.  Check Student A's registration status.
+*   **Expected Result:** Student A's status is automatically updated to `CONFIRMED`, and a push notification is triggered for them.
+
+#### TC-REG-04: FCFS Waiting List Paid Event Promotion & Payment Flow
+*   **Description:** Verify that when a paid event is full, registrations go to the waiting list, promote to PENDING_PAYMENT, and transition to verification on screenshot upload.
+*   **Preconditions:** A paid event has capacity = 2, with 2 confirmed registrations.
+*   **Test Steps:**
+    1.  Student B registers. Assert status is `WAITING_LIST` (no payment requested).
+    2.  One confirmed student cancels.
+    3.  Verify Student B's registration status becomes `PENDING_PAYMENT`.
+    4.  Student B calls `POST /api/registrations/{id}/submit-payment` uploading screenshot and txn ID.
+*   **Expected Result:** Student B's status becomes `PENDING_PAYMENT_VERIFICATION` for the coordinator to approve.
 
 ---
 

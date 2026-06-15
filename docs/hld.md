@@ -29,22 +29,27 @@ graph TD
 
 ## 2. Authentication Flow (OAuth 2.0 + PKCE)
 
-To secure user access without saving secrets on the client side, the application implements the **Authorization Code Flow with Proof Key for Code Exchange (PKCE)**.
+To secure user access, the application implements the **Authorization Code Flow with Proof Key for Code Exchange (PKCE)**. 
+
+### 2.1 Role Creation & Assignment Flow
+1.  **Account Pre-creation:** The System Admin pre-creates Keycloak user logins for students and faculty.
+2.  **SPOC Assignment:** The Admin assigns the `SPOC` role to specific faculty members in Keycloak and binds them to a specific department in the database.
+3.  **Coordinator Promotion:** Department SPOCs use a dashboard to assign coordinator roles to users within their department (demanding `FACULTY_COORDINATOR` or `STUDENT_COORDINATOR` mappings depending on profile type).
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Student as "Student / Participant"
+    actor User as "User (Student/Faculty)"
     participant App as React Frontend
     participant Kong as Kong API Gateway
     participant Keycloak as Keycloak
     participant Backend as Spring Boot Backend
     participant DB as Supabase DB
 
-    Student->>App: Clicks Login
+    User->>App: Clicks Login
     App->>Keycloak: Redirect to Login with Code Challenge (via Kong /auth/*)
-    Keycloak->>Student: Present Keycloak Login Form
-    Student->>Keycloak: Submits Username/Password
+    Keycloak->>User: Present Login Form (Pre-created Credentials)
+    User->>Keycloak: Submits pre-created Credentials
     Keycloak->>App: Redirect back with Authorization Code
     App->>Keycloak: Request Token with Auth Code + Code Verifier
     Keycloak->>App: Return JWT Access & Refresh Tokens
@@ -61,10 +66,10 @@ sequenceDiagram
     end
     
     Backend->>App: Return REST API Response
-    App->>Student: Render View with details
+    App->>User: Render View based on Role
 ```
 
-### 2.1 Networking & Security Boundaries
+### 2.2 Networking & Security Boundaries
 1.  **Kong Gateway Integration:** All API calls target Kong. It intercepts `/auth/*` and forwards requests to Keycloak, and routes `/api/*` to the Spring Boot cluster.
 2.  **JWT Verification:** Spring Boot serves as an OAuth2 Resource Server. It validates the signature of incoming JWTs against Keycloak's public keys.
 
@@ -76,10 +81,11 @@ PWA notifications are native and run independently of external notification engi
 
 *   **VAPID Key Pair:** A cryptographic signature pair. The public key is exposed on the frontend, and the private key is held securely by the Spring Boot backend.
 *   **Subscription Flow:**
-    1.  The student authorizes notification prompts in the browser.
+    1.  The user authorizes notification prompts in the browser.
     2.  The Service Worker registers a push subscription using the public VAPID key.
     3.  The subscription object (containing endpoint and keys) is saved in Supabase via Spring Boot backend APIs.
 *   **Dispatch Flow:**
-    1.  When an event is published or a registration status changes, Spring Boot fetches the targeted user's subscription record.
+    1.  When a waiting list student is promoted (either to `CONFIRMED` or `PENDING_PAYMENT`), or a coordinator publishes a new event, Spring Boot fetches the targeted user's subscription record.
     2.  The backend signs a payload with the private VAPID key and sends it to the browser's web push service.
     3.  The push service wakes up the client Service Worker, displaying an OS-level notification popup.
+

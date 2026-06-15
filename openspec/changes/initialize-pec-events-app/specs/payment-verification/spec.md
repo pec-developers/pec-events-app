@@ -1,12 +1,20 @@
 ## ADDED Requirements
 
-### Requirement: Manual Verification Dashboard
-Coordinators can view payment screenshots and transaction details to verify and either approve or reject event registrations.
+### Requirement: Manual Verification & FCFS Promotions
+Coordinators assigned to an event can view payment details to verify and approve/reject registrations. When a confirmed student cancels, the system automatically promotes the next waiting list student.
 
-#### Scenario: Coordinator Approves Valid UPI Registration
-- **WHEN** a Student Coordinator or Faculty Coordinator clicks approve on a registration in the `PENDING_PAYMENT_VERIFICATION` state
-- **THEN** the registration status is updated to `CONFIRMED`, the event slot capacity is decremented by 1, and a success notification payload is created for the student.
+#### Scenario: Assigned Coordinator Approves Valid UPI Registration
+- **WHEN** a Coordinator assigned to the event approves a registration in `PENDING_PAYMENT_VERIFICATION` state
+- **THEN** the registration status is updated to `CONFIRMED` and a success notification is sent to the student.
 
 #### Scenario: Coordinator Rejects Invalid UPI Registration
-- **WHEN** a Coordinator rejects a registration due to an invalid screenshot or transaction mismatch
-- **THEN** the registration status is updated to `REJECTED` and a notification containing the rejection reason is scheduled for the student.
+- **WHEN** an assigned Coordinator rejects a registration due to transaction verification mismatch
+- **THEN** the registration status is updated to `REJECTED` and a push notification containing the rejection reason is scheduled.
+
+#### Scenario: Student Dropout Triggers Free Event Promotion
+- **WHEN** a student cancels a `CONFIRMED` registration on a free event with a waiting list
+- **THEN** the oldest `WAITING_LIST` registration (by `created_at` ASC) is automatically promoted to `CONFIRMED` and notified.
+
+#### Scenario: Student Dropout Triggers Paid Event Promotion
+- **WHEN** a student cancels a `CONFIRMED` registration on a paid event with a waiting list
+- **THEN** the oldest `WAITING_LIST` registration is automatically promoted to `PENDING_PAYMENT` and sent a push notification requesting payment details.

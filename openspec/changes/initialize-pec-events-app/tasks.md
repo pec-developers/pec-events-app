@@ -1,6 +1,6 @@
 ## 1. Initial Documentation & STLC QA Planning
 
-- [ ] 1.1 Create Business Requirements Document (BRD) under `docs/brd.md` defining core workflows, roles, and V1 UPI scoping.
+- [x] 1.1 Create Business Requirements Document (BRD) under `docs/brd.md` defining core workflows, roles, and V1 UPI scoping.
 - [ ] 1.2 Create Product Requirements Document (PRD) under `docs/prd.md` specifying details for events list, registration forms, and manual approvals.
 - [ ] 1.3 Create High-Level Design (HLD) under `docs/hld.md` containing network topology and auth flow diagrams using Mermaid syntax.
 - [ ] 1.4 Create Low-Level Design (LLD) under `docs/lld.md` detailing PostgreSQL database schemas, entity relationship (ER) diagrams, and Spring Boot API schemas with JSON examples.
@@ -24,48 +24,53 @@
 
 ## 4. Keycloak & Kong Gateway Integration
 
-- [ ] 4.1 Setup Keycloak Realm, client configuration for PKCE OAuth2 flow, and define the 4 user roles.
+- [ ] 4.1 Setup Keycloak Realm, client configuration for PKCE OAuth2 flow, and define the 5 user roles (`ADMIN`, `SPOC`, `FACULTY_COORDINATOR`, `STUDENT_COORDINATOR`, `STUDENT`).
 - [ ] 4.2 Configure Kong API Gateway routing rules, exposing Keycloak endpoints under `/auth/*` and proxying API endpoints under `/api/*` to EKS backend pods.
 - [ ] 4.3 Implement PKCE login flow in React frontend, saving retrieved JWT access and refresh tokens inside Zustand store `src/stores/authStore.ts`.
 - [ ] 4.4 Set up Kong Gateway rate-limiting and CORS policy plugins for uniform security.
 
 ## 5. Backend Base Setup & User Synchronization
 
-- [ ] 5.1 Initialize Spring Boot Web project, configuring build plugins and dependencies (Spring Security, Spring Web, OAuth2 Resource Server, PostgreSQL Driver).
+- [ ] 5.1 Initialize Spring Boot Web project, configuring build dependencies (Spring Security, Spring Web, OAuth2 Resource Server, PostgreSQL Driver).
 - [ ] 5.2 Configure Spring Security context to decode and validate Keycloak JWT access tokens forwarded by Kong.
 - [ ] 5.3 Implement user profile synchronization handler: on successful user authentication, extract Keycloak claims and write user info (ID, name, email, department, role) to the Supabase PostgreSQL database.
-- [ ] 5.4 Write Vitest tests for `src/stores/authStore.ts` and JUnit tests for backend security token decode filters.
+- [ ] 5.4 Implement Admin SPOC management endpoints: `POST /api/admin/spocs` (assign a user as SPOC for a department).
+- [ ] 5.5 Implement SPOC Coordinator management endpoints: `POST /api/spoc/coordinators` (promote department users to coordinators).
+- [ ] 5.6 Build React Admin and SPOC views using HeroUI showing user lists, department assignments, and promotion buttons.
+- [ ] 5.7 Write Vitest tests for `src/stores/authStore.ts` and JUnit tests for backend security token decode filters.
 
 ## 6. Event Creation & High-Concurrency Capacity Control
 
 - [ ] 6.1 Create test documentation for event management endpoints under STLC specs.
-- [ ] 6.2 Implement backend Spring Boot endpoints for event management: CRUD APIs for event creation, updates, and listings.
-- [ ] 6.3 Implement database transaction logic utilizing `SELECT ... FOR UPDATE` (row-level locking) when reserving seats to prevent ticket overselling.
-- [ ] 6.4 Write integration tests (Spring Boot Test + Testcontainers/PostgreSQL) validating that concurrent requests for a single event slot result in exactly one success and appropriate errors for others.
-- [ ] 6.5 Build React dashboard pages for coordinators to create, list, and modify events using HeroUI forms and table components.
+- [ ] 6.2 Implement backend Spring Boot endpoints for event creation: CRUD APIs. Enforce that only Faculty Coordinators can call `POST /api/events` to post events.
+- [ ] 6.3 Implement `event_coordinators` many-to-many relationship and endpoints to assign/remove collaborators on events.
+- [ ] 6.4 Implement database transaction logic utilizing `SELECT ... FOR UPDATE` (row-level locking) when reserving seats to ensure FCFS order and prevent ticket overselling.
+- [ ] 6.5 Write integration tests (Spring Boot Test + Testcontainers/PostgreSQL) validating that concurrent requests for event slots respect capacity constraints.
+- [ ] 6.6 Build React dashboard pages for coordinators to create events, manage collaborator lists, and edit assigned events using HeroUI components.
 
-## 7. Registrations & Manual UPI Payments (V1)
+## 7. Registrations & FCFS Waiting List (V1)
 
-- [ ] 7.1 Create test case specifications for free/paid registration workflows.
-- [ ] 7.2 Implement Spring Boot endpoint to process free registrations (immediate slot decrementation) and paid registrations (creating a state of `PENDING_PAYMENT_VERIFICATION`).
-- [ ] 7.3 Implement Spring Boot endpoint to receive payment confirmation screenshot files, upload them to AWS S3, and store the resulting S3 URL in PostgreSQL database.
-- [ ] 7.4 Build React registration views for students showcasing events details, registration buttons, UPI QR code presentation, transaction ID forms, and S3 file uploads.
-- [ ] 7.5 Write JUnit unit tests for the registration logic and Vitest integration tests for Zustand registration stores.
+- [ ] 7.1 Create test case specifications for free/paid registration and waiting list workflows.
+- [ ] 7.2 Implement Spring Boot endpoint `POST /api/events/{eventId}/register` to process registrations. If capacity limit is reached, place the registration in the `WAITING_LIST` state (deferring payment for paid events).
+- [ ] 7.3 Implement cancellation/dropout endpoint: `POST /api/registrations/{registrationId}/cancel` that triggers a database transaction to cancel the reservation and automatically promote the oldest waiting list entry.
+- [ ] 7.4 Implement payment upload endpoint for promoted waiting list students: `POST /api/registrations/{registrationId}/submit-payment` which takes screenshots and uploads them to AWS S3, transitioning status to `PENDING_PAYMENT_VERIFICATION`.
+- [ ] 7.5 Build React registration views for students showcasing waiting list placement notifications, cancel registration actions, and delayed UPI payment modals.
+- [ ] 7.6 Write JUnit unit tests for the FCFS promotion logic and Vitest integration tests for Zustand registration stores.
 
 ## 8. Coordinator Verification Dashboard
 
 - [ ] 8.1 Create test case specifications for manual UPI validation and coordinator audits.
-- [ ] 8.2 Implement backend endpoints for coordinators to fetch registrations by state and approve/reject them.
+- [ ] 8.2 Implement backend endpoints for coordinators to fetch registrations by state (including waiting list and pending payment) and verify/approve/reject them.
 - [ ] 8.3 Build React dashboard components using HeroUI showing lists of pending payments, screenshot modals, and actions to approve/reject registrations.
-- [ ] 8.4 Write JUnit validation tests verifying state transition safety (e.g., cannot approve an already confirmed or rejected registration).
+- [ ] 8.4 Write JUnit validation tests verifying state transition safety.
 
 ## 9. Web Push Notifications
 
 - [ ] 9.1 Design push notification subscription and service worker test specifications.
-- [ ] 9.2 Implement backend endpoints for registering Web Push subscriptions (endpoints to receive and store browser push tokens).
+- [ ] 9.2 Implement backend endpoints for registering Web Push subscriptions.
 - [ ] 9.3 Implement backend push notification service utilizing VAPID keys to sign and dispatch payloads.
 - [ ] 9.4 Register and script PWA service worker in React frontend to listen for background push messages and trigger OS-level notification boxes.
-- [ ] 9.5 Integrate push alert triggers: dispatch alerts automatically when an event is published or registration is approved/rejected.
+- [ ] 9.5 Integrate push alert triggers: dispatch alerts automatically when a waiting list student is promoted (`CONFIRMED` or `PENDING_PAYMENT`).
 - [ ] 9.6 Write integration tests for push notification dispatches.
 
 ## 10. End-to-End Verification & Deployments
