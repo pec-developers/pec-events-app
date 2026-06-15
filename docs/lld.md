@@ -363,25 +363,73 @@ frontend/src/
     ```
 
 ### 4.9 User Self-Registration
-*   **Path:** `POST /api/auth/register`
-*   **Request JSON:**
-    ```json
-    {
-      "registrationNumber": "PEC12345",
-      "email": "student@pec.edu",
-      "phoneNumber": "+919876543210",
-      "name": "Jane Doe",
-      "password": "securepassword123"
-    }
-    ```
-*   **Response JSON (201 Created):**
-    ```json
-    {
-      "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
-      "registrationNumber": "PEC12345",
-      "status": "REGISTERED"
-    }
-    ```
+Self-registration is orchestrated on Keycloak-hosted pages behind the Kong Gateway. Once the user submits their registration form, Keycloak guides the user through the following sequential verification flow before generating the account:
+
+1. **Email OTP Verification Screen:** Keycloak generates an OTP and sends it via the Resend.com SMTP relay. Keycloak displays the Email verification screen.
+2. **Phone/SMS OTP Verification Screen:** Upon email verification success, Keycloak generates a second OTP and dispatches it via Twilio SMS. Keycloak displays the Phone verification screen.
+3. **Account Creation & Redirect:** Once both OTPs are successfully validated, Keycloak registers the user and redirects back to the SPA.
+
+If utilizing a direct self-registration endpoint via the Kong Gateway (for custom headless signup interfaces), the registration follows a multi-step verification:
+
+*   **Step 1: Submit Details & Request Email OTP**
+    *   **Path:** `POST /api/auth/register/initiate`
+    *   **Request JSON:**
+        ```json
+        {
+          "registrationNumber": "PEC12345",
+          "email": "student@pec.edu",
+          "phoneNumber": "+919876543210",
+          "name": "Jane Doe",
+          "password": "securepassword123"
+        }
+        ```
+    *   **Response JSON (202 Accepted):**
+        ```json
+        {
+          "sessionToken": "reg_session_abc123",
+          "emailVerified": false,
+          "phoneVerified": false,
+          "message": "Registration initiated. Email OTP sent."
+        }
+        ```
+
+*   **Step 2: Verify Email OTP & Request Phone OTP**
+    *   **Path:** `POST /api/auth/register/verify-email`
+    *   **Request JSON:**
+        ```json
+        {
+          "sessionToken": "reg_session_abc123",
+          "otp": "123456"
+        }
+        ```
+    *   **Response JSON (200 OK):**
+        ```json
+        {
+          "sessionToken": "reg_session_abc123",
+          "emailVerified": true,
+          "phoneVerified": false,
+          "message": "Email verified. Phone SMS OTP sent."
+        }
+        ```
+
+*   **Step 3: Verify Phone OTP & Finalize Registration**
+    *   **Path:** `POST /api/auth/register/verify-phone`
+    *   **Request JSON:**
+        ```json
+        {
+          "sessionToken": "reg_session_abc123",
+          "otp": "654321"
+        }
+        ```
+    *   **Response JSON (201 Created):**
+        ```json
+        {
+          "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
+          "registrationNumber": "PEC12345",
+          "status": "REGISTERED"
+        }
+        ```
+
 *   **Response JSON (409 Conflict - Registration Number Exists):**
     ```json
     {

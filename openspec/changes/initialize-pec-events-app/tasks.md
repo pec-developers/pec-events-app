@@ -28,7 +28,7 @@
 - [ ] 4.2 Configure Kong API Gateway routing rules, exposing Keycloak endpoints under `/auth/*` and proxying API endpoints under `/api/*` to EKS backend pods.
 - [ ] 4.3 Implement PKCE login flow in React frontend, saving retrieved JWT access and refresh tokens inside Zustand store `src/stores/authStore.ts`.
 - [ ] 4.4 Set up Kong Gateway rate-limiting and CORS policy plugins for uniform security.
-- [ ] 4.5 Configure Keycloak user self-registration settings mapping registration number, email, and phone number. Setup SMTP settings with Resend.com for Email OTP and deploy custom SMS Authenticator SPI for Twilio for SMS OTP.
+- [ ] 4.5 Configure Keycloak user self-registration settings mapping registration number, email, and phone number. Setup SMTP settings with Resend.com for Email OTP and deploy custom SMS Authenticator SPI for Twilio for SMS OTP. Configure custom registration flow in Keycloak to enforce sequential verification of Email OTP, followed by Phone OTP, before user creation completes, applying rate-limiting to both channels.
 
 ## 5. Backend Base Setup & User Synchronization
 

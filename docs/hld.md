@@ -41,7 +41,7 @@ graph TD
 To secure user access, the application implements the **Authorization Code Flow with Proof Key for Code Exchange (PKCE)**. 
 
 ### 2.1 Role Creation & Assignment Flow
-1.  **Account Self-Registration:** Students and Faculty register themselves within the application using their registration number, email, and phone number. Keycloak handles the registration. If the registration number already exists, Keycloak redirects the user back to the login screen.
+1.  **Account Self-Registration with Dual OTP:** Students and Faculty register themselves within the application using their registration number, email, and phone number. Keycloak handles the registration flow, enforcing sequential verification. First, an Email OTP is dispatched via Resend.com; upon verification, a Phone OTP is dispatched via Twilio SMS SPI. Both must be completed successfully before Keycloak creates the account. If the registration number already exists, Keycloak redirects the user back to the login screen.
 2.  **Forgot Password (OTP Recovery):** Users can recover their passwords via a "Forgot Password" link on the login screen, prompting an OTP dispatch to either their registered Email or Phone Number (SMS).
 3.  **SPOC Assignment:** The Admin assigns the `SPOC` role to specific faculty members in Keycloak and binds them to a specific department in the database.
 4.  **Coordinator Promotion:** Department SPOCs use a dashboard to assign coordinator roles to users within their department (demanding `FACULTY_COORDINATOR` or `STUDENT_COORDINATOR` mappings depending on profile type).
@@ -61,7 +61,18 @@ sequenceDiagram
     User->>App: Clicks Login / Register
     App->>Keycloak: Redirect to Keycloak with Code Challenge (via Kong /auth/*)
     Keycloak->>User: Present Login / Registration Form
-    User->>Keycloak: Submits registration info OR logs in
+    alt User is Registering
+        User->>Keycloak: Submits registration info
+        Keycloak->>Resend: Request SMTP Dispatch (Email verification)
+        Resend->>User: Deliver Email OTP
+        User->>Keycloak: Enters Email OTP
+        Keycloak->>Twilio: Request SMS API Dispatch (Phone verification)
+        Twilio->>User: Deliver Phone OTP
+        User->>Keycloak: Enters Phone OTP
+        Keycloak->>Keycloak: Create User Account
+    else User is Logging In
+        User->>Keycloak: Submits credentials
+    end
     alt Forgot Password Request
         User->>Keycloak: Clicks Forgot Password & Requests OTP
         alt Choose Email Channel

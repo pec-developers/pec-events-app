@@ -22,7 +22,7 @@ This change initializes the PEC Events Notification and Management application l
 ## Capabilities
 
 ### New Capabilities
-- `user-authentication`: Multi-role login and self-registration using registration number, email, and phone number via Keycloak behind Kong. Redirects existing registration numbers to the login screen and supports password recovery via Keycloak OTP dispatched through Resend.com (Email) and Twilio (SMS).
+- `user-authentication`: Multi-role login and self-registration using registration number, email, and phone number via Keycloak behind Kong. Enforces sequential dual-channel OTP verification (Email OTP via Resend.com and Phone OTP via Twilio custom SMS Authenticator SPI) prior to user creation, redirects existing registration numbers to the login screen, and supports password recovery via Keycloak OTP.
 - `event-management`: Interfaces for Faculty Coordinators to post events and assign collaborators (other Faculty/Student Coordinators). Collaborators have edit rights over assigned events.
 - `event-registration`: Browse events list and register. Restricts registration eligibility to students, and automatically places users on a First-Come, First-Served (FCFS) Waiting List once capacity limit is reached.
 - `waiting-list-promotion`: Database transaction logic that, upon user cancellation, promotes the oldest waiting list student (immediately confirmed for free events, or placed in `PENDING_PAYMENT` requesting payment upload for paid events).

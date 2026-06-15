@@ -24,7 +24,7 @@ The application supports six distinct user roles with hierarchical authority. St
 ## 4. Phase Boundaries (V1 vs. V2)
 
 ### Phase 1 (V1) - Current Scope
-*   **Self-Registration with Unique ID Check:** Verification of self-registering users against a pre-seeded enrollment list. If the registration number is already in use, they are redirected to the login screen. Forgot password OTP recovery is sent to their registered email or phone directly through Keycloak using Resend.com and Twilio APIs.
+*   **Self-Registration with Unique ID Check & Dual OTP:** Verification of self-registering users against a pre-seeded enrollment list. Enforces sequential dual-channel OTP verification (Email OTP sent via Resend.com SMTP relay first, followed by Phone/SMS OTP sent via Twilio custom SPI) during Keycloak self-registration before account creation is completed. If the registration number is already in use, they are redirected to the login screen. Forgot password OTP recovery is also supported.
 *   **FCFS Waiting List & Promotion Limit:** If event capacity is full, registrations are placed in a `WAITING_LIST` state. When a confirmed registration cancels, the oldest waiting list registration is automatically promoted:
     *   *Free Event:* Promoted directly to `CONFIRMED`.
     *   *Paid Event:* Promoted to `PENDING_PAYMENT`. The student has a **24-hour time limit** to submit payment details, after which they are automatically cancelled and the next waiting list student is promoted.

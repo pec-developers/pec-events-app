@@ -8,6 +8,10 @@
     2. `email`
     3. `phone_number`
     4. `password`
+*   **Sequential Registration OTP Verification:** Before the user is registered in Keycloak, they must complete two-step sequential verification:
+    1. **Email OTP Verification:** Keycloak dispatches an OTP to the user's email via Resend.com. The user must verify the OTP. If the OTP is incorrect, Keycloak prompts a native retry error. The user can retry or click a "Resend OTP" link.
+    2. **Phone OTP Verification:** Once email verification succeeds, Keycloak dispatches an OTP to the user's phone number via Twilio (using a custom SMS authenticator SPI). The user must verify the OTP. Similarly, retries and resends (subject to rate limiting) are supported.
+    Only when both steps are successfully completed is the user account created in Keycloak.
 *   **Registration Verification:** If the `registration_number` is already registered, the application immediately redirects the user to the login screen with a message stating that the registration number is already in use.
 *   **Password Recovery (OTP):** In case of a forgotten password, the login screen redirects to Keycloak's recovery portal. Keycloak dispatches a reset One-Time Password (OTP) or reset link directly using **Resend.com** (for email channels) and **Twilio** (via a custom SMS authenticator SPI for phone channels).
 *   **Automatic Profile Sync:** On successful login, the frontend sends the JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `phone_number`, `registration_number`, `department`, and `role`.

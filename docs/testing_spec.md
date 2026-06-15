@@ -59,6 +59,20 @@ flowchart LR
     2.  Verify the response status and payload error code.
 *   **Expected Result:** The request is rejected with `409 Conflict` and error code `REGISTRATION_NUMBER_EXISTS`. The client redirects to the login view.
 
+#### TC-AUTH-05: Self-Registration Dual OTP Verification (Email and Phone)
+*   **Description:** Validate that user registration successfully processes both email OTP (via Resend.com) and phone OTP (via Twilio) sequentially, and handles retries/resends.
+*   **Preconditions:** Keycloak is online. SMTP and Twilio SMS integrations are active. Registration number `PEC99999` is not registered.
+*   **Test Steps:**
+    1.  Submit registration details for `PEC99999` with email `newstudent@pec.edu` and phone `+919876543211`.
+    2.  Assert that Keycloak triggers Email OTP dispatch via Resend.com and displays Email verification page.
+    3.  Enter an incorrect Email OTP; verify that Keycloak displays validation error and allows retry.
+    4.  Click "Resend OTP"; verify a new Email OTP is sent.
+    5.  Enter the correct Email OTP; assert that Keycloak triggers Phone OTP dispatch via Twilio and displays Phone verification page.
+    6.  Enter an incorrect Phone OTP; verify that Keycloak displays validation error and allows retry.
+    7.  Click "Resend OTP"; verify a new Phone OTP is sent.
+    8.  Enter the correct Phone OTP; verify that Keycloak completes user creation and redirects to the React client with the authorization code.
+*   **Expected Result:** Registration only completes and redirect occurs after both Email and Phone OTPs are successfully verified sequentially.
+
 #### TC-AUTH-04: Forgot Password OTP Dispatch & Reset (Email/SMS)
 *   **Description:** Validate that Keycloak dispatches OTP/reset link through Resend.com and Twilio.
 *   **Preconditions:** Keycloak is configured with Resend.com SMTP and the Twilio SMS Authenticator SPI. User profile exists with registration number `PEC12345`, email `student@pec.edu`, and phone `+919876543210`.

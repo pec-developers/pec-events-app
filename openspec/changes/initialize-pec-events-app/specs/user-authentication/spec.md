@@ -3,9 +3,27 @@
 ### Requirement: Institutional Role Mapping & Sync
 Users must be authenticated via Keycloak through Kong paths, mapping their JWT claims into specific system roles, and synchronizing their profile details to Supabase. Users self-register using their registration number, email, and phone number.
 
-#### Scenario: Successful Self-Registration
-- **WHEN** a user registers with a unique registration number, email, and phone number
+#### Scenario: Successful Self-Registration with Dual OTP Verification
+- **WHEN** a user submits the self-registration form with a unique registration number, email, and phone number
+- **AND** they enter the correct Email OTP sent via Resend.com SMTP relay
+- **AND** they enter the correct Phone OTP sent via Twilio custom SMS Authenticator SPI
 - **THEN** their account is created in Keycloak and their profile is synced to Supabase on first login.
+
+#### Scenario: Self-Registration with Email OTP Verification Retry
+- **WHEN** a user enters an incorrect Email OTP on Keycloak verification screen
+- **THEN** Keycloak displays a native validation error message and allows the user to retry input.
+
+#### Scenario: Self-Registration with Email OTP Resend
+- **WHEN** a user requests an Email OTP resend on Keycloak verification screen
+- **THEN** Keycloak dispatches a new Email OTP via Resend.com subject to global dispatch rate-limiting.
+
+#### Scenario: Self-Registration with Phone OTP Verification Retry
+- **WHEN** a user enters an incorrect Phone OTP on Keycloak verification screen
+- **THEN** Keycloak displays a native validation error message and allows the user to retry input.
+
+#### Scenario: Self-Registration with Phone OTP Resend
+- **WHEN** a user requests a Phone OTP resend on Keycloak verification screen
+- **THEN** Keycloak dispatches a new Phone OTP via Twilio subject to global dispatch rate-limiting.
 
 #### Scenario: Self-Registration with Existing Registration Number
 - **WHEN** a user registers with an already registered registration number

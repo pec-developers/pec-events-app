@@ -13,6 +13,7 @@ context: |
   
   User Roles & Registration Policy:
     - Email Domain Rules: Allow registration with any email domain for all roles, relying on manual validation/coordination by event coordinators.
+    - Verification Policy: Sequential dual-channel OTP verification is required during self-registration in Keycloak before account creation completes. Keycloak dispatches an Email OTP via Resend.com SMTP relay, followed by a Phone/SMS OTP via Twilio custom SPI.
     - Roles:
       1. Student / Participant: Can browse events, register, submit payment confirmation (UPI screenshot + transaction ID), and receive notifications.
       2. Student Coordinator: Can publish events, view/manage registrations, and has full authority to verify/approve payments and registrations.
