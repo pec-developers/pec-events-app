@@ -8,12 +8,8 @@
     2. `email`
     3. `phone_number`
     4. `password`
-*   **Sequential Registration OTP Verification:** Before the user is registered in Keycloak, they must complete two-step sequential verification:
-    1. **Email OTP Verification:** Keycloak dispatches an OTP to the user's email via Resend.com. The user must verify the OTP. If the OTP is incorrect, Keycloak prompts a native retry error. The user can retry or click a "Resend OTP" link.
-    2. **Phone OTP Verification:** Once email verification succeeds, Keycloak dispatches an OTP to the user's phone number via Twilio (using a custom SMS authenticator SPI). The user must verify the OTP. Similarly, retries and resends (subject to rate limiting) are supported.
-    Only when both steps are successfully completed is the user account created in Keycloak.
-*   **Registration Verification:** If the `registration_number` is already registered, the application immediately redirects the user to the login screen with a message stating that the registration number is already in use.
-*   **Password Recovery (OTP):** In case of a forgotten password, the login screen redirects to Keycloak's recovery portal. Keycloak dispatches a reset One-Time Password (OTP) or reset link directly using **Resend.com** (for email channels) and **Twilio** (via a custom SMS authenticator SPI for phone channels).
+*   **Self-Registration Verification:** Users self-register using their institutional details (registration number, email, phone number) which are validated against a pre-seeded enrollment list. No OTP is required during registration. If the registration number is already in use, the user is redirected to the login screen.
+*   **Single OTP for Password Operations:** A single OTP (either email-based via Resend.com or SMS-based via Twilio) is used exclusively for password change and forgot password recovery operations.
 *   **Automatic Profile Sync:** On successful login, the frontend sends the JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `phone_number`, `registration_number`, `department`, and `role`.
 *   **Redis Cache System:** High-concurrency event discovery requests (listing and detail queries) are cached in Redis to decrease response times and prevent PostgreSQL database connection limits from being saturated during peaks.
 *   **RabbitMQ Message Queue:** Decouples the main transactional thread from I/O heavy notification dispatches. Status changes publish events to RabbitMQ, where a consumer consumes and executes Web Push alerts asynchronously.
@@ -23,8 +19,8 @@
 *   **Metadata Display:** Events display title, banner image, date, description, coordinator details, price, remaining seats, and registration deadline.
 
 ### 1.3 Event Creation (Coordinators)
-*   **Publishing Interface:** Only Faculty Coordinators can create and publish new events.
-*   **Collaborative Management:** When creating an event, the Faculty Coordinator is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event. Student Coordinators do NOT have permissions to manage (add or remove) collaborators on the event.
+*   **Event Creation & Publishing Interface:** Both Student and Faculty Coordinators can create events (saved as drafts). However, to prevent miscommunication and ensure safety, only Faculty Coordinators and department SPOCs have the authority to publish events.
+*   **Collaborative Management:** When creating an event, the creator (Student or Faculty Coordinator) is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event. Student Coordinators do NOT have permissions to manage (add or remove) collaborators on the event.
 *   **Event Modification:** Any coordinator assigned to an event has full modification permissions to edit details, manage registrations, and verify payments.
 *   **Parameters:** Configurable capacity limits, price, active flags, and UPI payment details.
 *   **Overbooking Control:** Enforce strict capacity caps using Postgres row-level locks when seat allocations or registrations occur.
