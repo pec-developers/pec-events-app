@@ -82,9 +82,11 @@ erDiagram
 
 ### 1.1 Integrity Rules
 *   **Users:** User profiles self-registered. Registration number must exist in the `eligible_enrollments` table and cannot be duplicated. User roles (`STUDENT`, `FACULTY`, `ADMIN`) are synced on registration based on the matching enrollment record.
+*   **Coordinators Limits:** Department SPOCs promote/create coordinator roles within their department (min 1, max 4 Faculty Coordinators, and min 1, max 4 Student Coordinators per department).
 *   **Registrations:** Status transitions:
     *   *Free events:* Immediate slot available: `CONFIRMED`. No slot: `WAITING_LIST` -> `CONFIRMED` (upon cancellation dropout promotion).
     *   *Paid events:* Immediate slot: `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED`. No slot: `WAITING_LIST` -> `PENDING_PAYMENT` (upon cancellation promotion) -> `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED` (or `PAYMENT_REJECTED` if re-upload allowed).
+    *   *Refund Processing:* Cancellations of paid registrations (status `PENDING_PAYMENT_VERIFICATION` or `CONFIRMED`) register a refund request to be processed within 24 hours.
     *   *24-Hour Expiry:* Promoted waiting list registrations in `PENDING_PAYMENT` status automatically transition to `EXPIRED` if payment details are not submitted within 24 hours.
     *   *12-Hour Re-upload Expiry:* Registrations transitioned to `PAYMENT_REJECTED` automatically transition to `EXPIRED` if valid payment details are not re-submitted within 12 hours from rejection.
 *   **Capacity Constraint:** Active reservation slots count (registrations in `CONFIRMED` or `PENDING_PAYMENT_VERIFICATION` state) must not exceed the event `capacity`.
@@ -146,9 +148,17 @@ public void cancelRegistration(UUID registrationId, UUID requestingUserId) {
     Event event = eventRepository.findByIdForUpdate(eventId)
         .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-    // 2. Cancel the registration
+    // 2. Cancel the registration and trigger refund if paid and student has submitted payment
+    boolean isPaidEvent = event.getPrice().compareTo(BigDecimal.ZERO) > 0;
+    boolean hasPaid = registration.getStatus() == RegistrationStatus.PENDING_PAYMENT_VERIFICATION 
+        || registration.getStatus() == RegistrationStatus.CONFIRMED;
+
     registration.setStatus(RegistrationStatus.CANCELLED);
     registrationRepository.save(registration);
+
+    if (isPaidEvent && hasPaid) {
+        refundService.triggerRefund(registrationId, 24); // Process refund within 24 hours
+    }
 
     // 3. Look for the oldest WAITING_LIST student
     Optional<Registration> oldestWaiting = registrationRepository
@@ -161,7 +171,7 @@ public void cancelRegistration(UUID registrationId, UUID requestingUserId) {
             // Trigger Service Worker push alert for confirmation
         } else {
             waiting.setStatus(RegistrationStatus.PENDING_PAYMENT);
-            // Trigger Service Worker push alert prompting payment upload
+            // Trigger Service Worker push alert prompting payment upload (enables pay option only for them)
         }
         registrationRepository.save(waiting);
     }
@@ -202,7 +212,7 @@ frontend/src/
 
 ## 4. API Schema Specifications
 
-### 4.1 Create Event (Faculty Coordinators only)
+### 4.1 Create Event Draft (Student or Faculty Coordinators)
 *   **Path:** `POST /api/events`
 *   **Headers:** `Authorization: Bearer <jwt-token>`
 *   **Request JSON:**
@@ -222,6 +232,20 @@ frontend/src/
       "title": "Hackathon 2026",
       "price": 250.00,
       "capacity": 150,
+      "status": "DRAFT",
+      "active": false
+    }
+    ```
+
+### 4.1b Publish Event (Faculty Coordinators or SPOC only)
+*   **Path:** `POST /api/events/{eventId}/publish`
+*   **Headers:** `Authorization: Bearer <jwt-token>`
+*   **Response JSON (200 OK):**
+    ```json
+    {
+      "id": "e4b2d8c3-12ab-4bcd-8ef0-1234567890ab",
+      "title": "Hackathon 2026",
+      "status": "PUBLISHED",
       "active": true
     }
     ```
@@ -247,6 +271,10 @@ frontend/src/
 ### 4.3 Register for Event (Free or Paid)
 *   **Path:** `POST /api/events/{eventId}/register`
 *   **Headers:** `Authorization: Bearer <jwt-token>`
+*   **Content-Type:** `multipart/form-data` (only required when slot is available and event is paid)
+*   **Request Parts (Optional, for Paid Events when slots are available):**
+    *   `transactionId` (text): `123456789012`
+    *   `screenshot` (file): Binary image file (JPEG/PNG, max 5MB)
 *   **Response JSON (201 Created - Slot Available, Free Event):**
     ```json
     {
@@ -265,7 +293,7 @@ frontend/src/
     ```json
     {
       "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
-      "status": "PENDING_PAYMENT_SUBMISSION"
+      "status": "PENDING_PAYMENT_VERIFICATION"
     }
     ```
 
@@ -293,7 +321,8 @@ frontend/src/
     {
       "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
       "status": "CANCELLED",
-      "message": "Registration cancelled. Queue processed."
+      "refundInitiated": true,
+      "message": "Registration cancelled. Refund scheduled within 24 hours. Queue processed."
     }
     ```
 
@@ -331,7 +360,8 @@ frontend/src/
     ```json
     {
       "userId": "u1a2b3c4-56de-78fa-9012-34567890abcd",
-      "department": "CSE"
+      "department": "CSE",
+      "dummyPassword": "tempPassword123"
     }
     ```
 *   **Response JSON (201 Created):**
@@ -339,7 +369,8 @@ frontend/src/
     {
       "userId": "u1a2b3c4-56de-78fa-9012-34567890abcd",
       "department": "CSE",
-      "role": "SPOC"
+      "role": "SPOC",
+      "message": "SPOC created with dummy password."
     }
     ```
 
@@ -350,7 +381,8 @@ frontend/src/
     ```json
     {
       "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
-      "action": "PROMOTE"
+      "action": "PROMOTE",
+      "dummyPassword": "coordTempPassword456"
     }
     ```
 *   **Response JSON (200 OK):**
@@ -358,21 +390,16 @@ frontend/src/
     {
       "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
       "role": "STUDENT_COORDINATOR",
-      "status": "PROMOTED"
+      "status": "PROMOTED",
+      "message": "Coordinator promoted with dummy password."
     }
     ```
 
 ### 4.9 User Self-Registration
-Self-registration is orchestrated on Keycloak-hosted pages behind the Kong Gateway. Once the user submits their registration form, Keycloak guides the user through the following sequential verification flow before generating the account:
+Self-registration is orchestrated on Keycloak-hosted pages behind the Kong Gateway. Once the user submits their registration form, Keycloak validates the user credentials against the pre-seeded enrollment list (no OTP is sent during registration) and registers the account.
 
-1. **Email OTP Verification Screen:** Keycloak generates an OTP and sends it via the Resend.com SMTP relay. Keycloak displays the Email verification screen.
-2. **Phone/SMS OTP Verification Screen:** Upon email verification success, Keycloak generates a second OTP and dispatches it via Twilio SMS. Keycloak displays the Phone verification screen.
-3. **Account Creation & Redirect:** Once both OTPs are successfully validated, Keycloak registers the user and redirects back to the SPA.
-
-If utilizing a direct self-registration endpoint via the Kong Gateway (for custom headless signup interfaces), the registration follows a multi-step verification:
-
-*   **Step 1: Submit Details & Request Email OTP**
-    *   **Path:** `POST /api/auth/register/initiate`
+*   **Direct Headless Self-Registration Endpoint**
+    *   **Path:** `POST /api/auth/register`
     *   **Request JSON:**
         ```json
         {
@@ -383,44 +410,6 @@ If utilizing a direct self-registration endpoint via the Kong Gateway (for custo
           "password": "securepassword123"
         }
         ```
-    *   **Response JSON (202 Accepted):**
-        ```json
-        {
-          "sessionToken": "reg_session_abc123",
-          "emailVerified": false,
-          "phoneVerified": false,
-          "message": "Registration initiated. Email OTP sent."
-        }
-        ```
-
-*   **Step 2: Verify Email OTP & Request Phone OTP**
-    *   **Path:** `POST /api/auth/register/verify-email`
-    *   **Request JSON:**
-        ```json
-        {
-          "sessionToken": "reg_session_abc123",
-          "otp": "123456"
-        }
-        ```
-    *   **Response JSON (200 OK):**
-        ```json
-        {
-          "sessionToken": "reg_session_abc123",
-          "emailVerified": true,
-          "phoneVerified": false,
-          "message": "Email verified. Phone SMS OTP sent."
-        }
-        ```
-
-*   **Step 3: Verify Phone OTP & Finalize Registration**
-    *   **Path:** `POST /api/auth/register/verify-phone`
-    *   **Request JSON:**
-        ```json
-        {
-          "sessionToken": "reg_session_abc123",
-          "otp": "654321"
-        }
-        ```
     *   **Response JSON (201 Created):**
         ```json
         {
@@ -429,14 +418,50 @@ If utilizing a direct self-registration endpoint via the Kong Gateway (for custo
           "status": "REGISTERED"
         }
         ```
+    *   **Response JSON (409 Conflict - Registration Number Exists):**
+        ```json
+        {
+          "errorCode": "REGISTRATION_NUMBER_EXISTS",
+          "message": "Registration number already exists. Redirecting to login."
+        }
+        ```
 
-*   **Response JSON (409 Conflict - Registration Number Exists):**
-    ```json
-    {
-      "errorCode": "REGISTRATION_NUMBER_EXISTS",
-      "message": "Registration number already exists. Redirecting to login."
-    }
-    ```
+### 4.10 Credentials Administration & OTP Actions
+
+*   **Request Password Reset / Recovery OTP (Single OTP)**
+    *   **Path:** `POST /api/auth/password/forgot`
+    *   **Request JSON:**
+        ```json
+        {
+          "identity": "student@pec.edu",
+          "channel": "EMAIL"
+        }
+        ```
+    *   **Response JSON (200 OK):**
+        ```json
+        {
+          "message": "Reset OTP dispatched via selected channel.",
+          "sessionToken": "reset_session_xyz789"
+        }
+        ```
+
+*   **Verify OTP & Update Password**
+    *   **Path:** `POST /api/auth/password/reset`
+    *   **Request JSON:**
+        ```json
+        {
+          "sessionToken": "reset_session_xyz789",
+          "otp": "123456",
+          "newPassword": "newSecurePassword456"
+        }
+        ```
+    *   **Response JSON (200 OK):**
+        ```json
+        {
+          "status": "PASSWORD_UPDATED",
+          "message": "Password successfully updated."
+        }
+        ```
 
 ## 5. Redis Caching Specification
 To sustain high concurrency workloads (6,000 users), active event endpoints utilize Redis caching.

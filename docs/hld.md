@@ -41,10 +41,10 @@ graph TD
 To secure user access, the application implements the **Authorization Code Flow with Proof Key for Code Exchange (PKCE)**. 
 
 ### 2.1 Role Creation & Assignment Flow
-1.  **Account Self-Registration with Dual OTP:** Students and Faculty register themselves within the application using their registration number, email, and phone number. Keycloak handles the registration flow, enforcing sequential verification. First, an Email OTP is dispatched via Resend.com; upon verification, a Phone OTP is dispatched via Twilio SMS SPI. Both must be completed successfully before Keycloak creates the account. If the registration number already exists, Keycloak redirects the user back to the login screen.
-2.  **Forgot Password (OTP Recovery):** Users can recover their passwords via a "Forgot Password" link on the login screen, prompting an OTP dispatch to either their registered Email or Phone Number (SMS).
-3.  **SPOC Assignment:** The Admin assigns the `SPOC` role to specific faculty members in Keycloak and binds them to a specific department in the database.
-4.  **Coordinator Promotion:** Department SPOCs use a dashboard to assign coordinator roles to users within their department (demanding `FACULTY_COORDINATOR` or `STUDENT_COORDINATOR` mappings depending on profile type).
+1.  **Account Self-Registration:** Students and Faculty register themselves within the application using their registration number, email, and phone number. Keycloak handles the registration flow, validating credentials against a pre-seeded enrollment list. No OTP is required during registration. If the registration number already exists, Keycloak redirects the user back to the login screen.
+2.  **Forgot Password / Password Change (Single OTP):** Users can recover or change their passwords via Keycloak's portal, prompting a single OTP dispatch to either their registered Email (via Resend.com SMTP relay) or Phone Number (SMS via Twilio).
+3.  **SPOC Assignment:** The Admin assigns the `SPOC` role to specific faculty members in Keycloak and binds them to a specific department in the database. During SPOC creation, the admin sets a dummy password (changeable by the SPOC later).
+4.  **Coordinator Promotion:** Department SPOCs use a dashboard to promote/create coordinator roles within their department (min 1, max 4 Faculty Coordinators, and min 1, max 4 Student Coordinators per department). The SPOC sets a dummy password for new coordinators that they can change later.
 
 ```mermaid
 sequenceDiagram
@@ -63,18 +63,13 @@ sequenceDiagram
     Keycloak->>User: Present Login / Registration Form
     alt User is Registering
         User->>Keycloak: Submits registration info
-        Keycloak->>Resend: Request SMTP Dispatch (Email verification)
-        Resend->>User: Deliver Email OTP
-        User->>Keycloak: Enters Email OTP
-        Keycloak->>Twilio: Request SMS API Dispatch (Phone verification)
-        Twilio->>User: Deliver Phone OTP
-        User->>Keycloak: Enters Phone OTP
+        Keycloak->>Keycloak: Validate against pre-seeded enrollment list
         Keycloak->>Keycloak: Create User Account
     else User is Logging In
         User->>Keycloak: Submits credentials
     end
-    alt Forgot Password Request
-        User->>Keycloak: Clicks Forgot Password & Requests OTP
+    alt Forgot / Change Password Request
+        User->>Keycloak: Requests Password Reset OTP
         alt Choose Email Channel
             Keycloak->>Resend: Request SMTP Dispatch
             Resend->>User: Deliver Reset OTP Email
