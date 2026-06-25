@@ -18,19 +18,20 @@ The application supports six distinct user roles with hierarchical authority. St
 | **Faculty (Non-Coordinator)** | - Registers by matching registration number against the enrollment database.<br>- Browse all events and view schedules.<br>- No registration option.<br>- Receives push notifications for new events. |
 | **Student Coordinator** | - Promoted from Student by the department SPOC.<br>- Assigned as event collaborator by Faculty Coordinators or SPOC.<br>- Modify event details and manage registrations *only* for assigned events.<br>- Cannot manage (add/remove) other event collaborators. |
 | **Faculty Coordinator** | - Promoted from Faculty by the department SPOC.<br>- Post/create new department events.<br>- Assigned as event collaborator; can modify details, manage registrations, and manage (add/remove) other collaborators on assigned events. |
-| **SPOC (Single Point of Contact)** | - Created and marked by the System Admin (one SPOC per academic department).<br>- Promote/demote department Faculty and Students to Coordinator status.<br>- Manage (add/remove) collaborators on any active department event.<br>- View audit logs and active events within their department. |
+| **SPOC (Single Point of Contact)** | - Created and marked by the System Admin (one SPOC per academic department).<br>- Promote/demote department Faculty and Students to Coordinator status (min 1, max 4 each for Faculty and Student Coordinators).<br>- Manage (add/remove) collaborators on any active department event.<br>- View audit logs and active events within their department. |
 | **System Admin** | - Uploads pre-seeded enrollment lists (CSV) of valid registration numbers.<br>- Manages user accounts and configures Keycloak realm.<br>- Assigns and configures the department SPOC users.<br>- Configures gateway routes, rate-limits, and infrastructure monitoring. |
 
 ## 4. Phase Boundaries (V1 vs. V2)
 
 ### Phase 1 (V1) - Current Scope
-*   **Self-Registration with Unique ID Check & Dual OTP:** Verification of self-registering users against a pre-seeded enrollment list. Enforces sequential dual-channel OTP verification (Email OTP sent via Resend.com SMTP relay first, followed by Phone/SMS OTP sent via Twilio custom SPI) during Keycloak self-registration before account creation is completed. If the registration number is already in use, they are redirected to the login screen. Forgot password OTP recovery is also supported.
+*   **Self-Registration with Unique ID Check:** Verification of self-registering users against a pre-seeded enrollment list. If the registration number is already in use, they are redirected to the login screen.
+*   **Single OTP for Password Operations:** A single OTP (either email-based via Resend.com or SMS-based via Twilio) is used exclusively for password change and forgot password recovery.
 *   **FCFS Waiting List & Promotion Limit:** If event capacity is full, registrations are placed in a `WAITING_LIST` state. When a confirmed registration cancels, the oldest waiting list registration is automatically promoted:
     *   *Free Event:* Promoted directly to `CONFIRMED`.
     *   *Paid Event:* Promoted to `PENDING_PAYMENT`. The student has a **24-hour time limit** to submit payment details, after which they are automatically cancelled and the next waiting list student is promoted.
 *   **Manual UPI Payments:** QR code payment submission modal for active or promoted students.
 *   **Manual Coordinator Verification:** Assigned collaborators (or SPOC) verify transaction details.
-*   **Hierarchical User Management:** Admin creates SPOCs; SPOCs promote/demote Coordinators.
+*   **Hierarchical User Management:** System Admin creates SPOC users. During creation, the admin sets a dummy password, which SPOCs can change later. A department SPOC can promote/create a minimum of 1 and maximum of 4 Faculty Coordinators, and the same (min 1, max 4) for Student Coordinators. For new coordinators, the SPOC sets a dummy password that they can change later.
 *   **Core Event & Slot Management:** Event creation (Faculty Coordinator only), collaborator assignments (Faculty Coordinators & SPOC only), capacity caps, and row-level locking.
 *   **PWA Web Push Notifications:** OS-level notifications for waiting list promotions and status updates.
 
