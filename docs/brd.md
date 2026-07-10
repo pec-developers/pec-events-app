@@ -19,13 +19,22 @@ The application supports six distinct user roles with hierarchical authority. St
 | **Student Coordinator** | - Promoted from Student by the department SPOC.<br>- Create events (must be published by a Faculty Coordinator or SPOC).<br>- Assigned as event collaborator by Faculty Coordinators or SPOC.<br>- Modify event details and manage registrations *only* for assigned events.<br>- Cannot manage (add/remove) other event collaborators. |
 | **Faculty Coordinator** | - Promoted from Faculty by the department SPOC.<br>- Create and publish department events.<br>- Assigned as event collaborator; can modify details, manage registrations, and manage (add/remove) other collaborators on assigned events. |
 | **SPOC (Single Point of Contact)** | - Created and marked by the System Admin (one SPOC per academic department).<br>- Promote/demote department Faculty and Students to Coordinator status (min 1, max 4 each for Faculty and Student Coordinators).<br>- Manage (add/remove) collaborators on any active department event.<br>- View audit logs and active events within their department. |
-| **System Admin** | - Uploads pre-seeded enrollment lists (CSV) of valid registration numbers.<br>- Manages user accounts and configures Keycloak realm.<br>- Assigns and configures the department SPOC users.<br>- Configures gateway routes, rate-limits, and infrastructure monitoring. |
+| **System Admin** | - Uploads pre-seeded enrollment lists (CSV) of valid registration numbers.<br>- Manages user accounts and configurations (via Supabase Auth dashboard in V1, and Keycloak realm in V2).<br>- Assigns and configures the department SPOC users.<br>- Configures system routing, rate-limits, and infrastructure monitoring (via Spring Boot configs in V1, and Kong API Gateway routes in V2). |
 
 ## 4. Phase Boundaries (V1 vs. V2)
 
 ### Phase 1 (V1) - Current Scope
+*   **Architecture & Deployment:** Direct React frontend to Spring Boot backend connection (no gateway). Supabase Cloud acts as both the Authentication Provider (GoTrue) and PostgreSQL Database. AWS S3 handles storage of user profile images, event assets (banners, posters, event photos), and payment verification screenshot uploads. Deployed as simple containers/VMs.
+*   **Code Architecture Style:** Enforced from the start:
+    *   *Frontend*: Strict **3-Tier Architecture** (separating View components, custom hooks/Zustand stores, and API network clients).
+    *   *Backend*: **Ports & Adapters (Hexagonal)** layout, decoupling business logic interfaces (`service/port/`) and implementations (`service/`) from data transfer models (`model/dto/`) and database persistence schemas (`model/entity/`). Segregates controller classes by role boundaries.
+*   **Authentication & Registration:** Frontend directs all authentication and account management requests (sign-up, sign-in, OTP verification) through the Spring Boot backend (`/auth/**` proxy routes), which interacts with Supabase Auth on the server-side. Spring Boot validates JWT signatures symmetrically (using the shared secret) or asymmetrically (using Supabase JWKS public keys) via a custom `SupabaseJwtFilter`. User attributes sync on first successful login.
+*   **Role-Based Security:** Spring Boot aspect `@RequiresRole` checks request permissions by querying the user role from the local database via `RoleService`.
+*   **Profile-Driven Configuration:** Separates local development and cloud integration. Default settings fallback to local postgres instances, and the active `aws` profile imports credentials dynamically from AWS Secrets Manager using Spring Cloud AWS.
+*   **Local Test Emulators:** Supports offline development via a local MinIO bucket emulator (port 9000) for S3 profile, event, and payment uploads, and local Inbucket SMTP catcher (port 54324) for email OTP captures.
+*   **Notifications & Caching:** Push notifications are triggered asynchronously using simple Spring Boot `@Async` task executors. No Redis caching or RabbitMQ broker.
 *   **Self-Registration with Unique ID Check:** Verification of self-registering users against a pre-seeded enrollment list. If the registration number is already in use, they are redirected to the login screen.
-*   **Single OTP for Password Operations:** A single OTP (either email-based via Resend.com or SMS-based via Twilio) is used exclusively for password change and forgot password recovery.
+*   **Single OTP for Password Operations:** A single OTP (dispatched via Supabase email/SMS configurations) is used exclusively for password change and forgot password recovery.
 *   **FCFS Waiting List & Promotion Limit:** If event capacity is full, registrations are placed in a `WAITING_LIST` state. When a confirmed registration cancels, the oldest waiting list registration is automatically promoted:
     *   *Free Event:* Promoted directly to `CONFIRMED`.
     *   *Paid Event:* Promoted to `PENDING_PAYMENT`. The student has a **24-hour time limit** to submit payment details, after which they are automatically cancelled and the next waiting list student is promoted.
@@ -36,6 +45,7 @@ The application supports six distinct user roles with hierarchical authority. St
 *   **PWA Web Push Notifications:** OS-level notifications for waiting list promotions and status updates.
 
 ### Phase 2 (V2) - Future Enhancements
+*   **Enterprise Scaling (EKS, Kong, Keycloak, Redis, RabbitMQ):** Introduce AWS EKS deployments managed by Helm. Expose APIs behind Kong API Gateway (`/auth/*` proxies to Keycloak, `/api/*` to Spring Boot). Migrate identity management to Keycloak (with dual-channel SMTP/SMS OTP setup). Introduce Redis caching for read queries and RabbitMQ broker for notification buffering.
 *   **Razorpay Gateway Integration:** Direct online checkout without screenshot uploads or manual validation.
 *   **Analytics Dashboards:** Automated charts showing registration rate trends, department-wise participation, and financial reconciliations.
 *   **Automatic Reminders:** Scheduled push alerts for upcoming events.
@@ -44,3 +54,4 @@ The application supports six distinct user roles with hierarchical authority. St
 
 ## 5. Reference Documents
 For detailed user interaction flows, styling tokens, and frontend architecture constraints, see the [User Flow and UI Development Documentation](user-flow-docs.md).
+

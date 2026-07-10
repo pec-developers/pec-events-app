@@ -3,16 +3,21 @@
 ## 1. Scope of Features
 
 ### 1.1 User Registration & Profile Synchronization
-*   **Authentication & Self-Registration Portal:** Keycloak coordinates authentication. Users self-register inside the app by providing:
-    1. `registration_number` (unique institutional ID)
-    2. `email`
-    3. `phone_number`
-    4. `password`
-*   **Self-Registration Verification:** Users self-register using their institutional details (registration number, email, phone number) which are validated against a pre-seeded enrollment list. No OTP is required during registration. If the registration number is already in use, the user is redirected to the login screen.
-*   **Single OTP for Password Operations:** A single OTP (either email-based via Resend.com or SMS-based via Twilio) is used exclusively for password change and forgot password recovery operations.
-*   **Automatic Profile Sync:** On successful login, the frontend sends the JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `phone_number`, `registration_number`, `department`, and `role`.
-*   **Redis Cache System:** High-concurrency event discovery requests (listing and detail queries) are cached in Redis to decrease response times and prevent PostgreSQL database connection limits from being saturated during peaks.
-*   **RabbitMQ Message Queue:** Decouples the main transactional thread from I/O heavy notification dispatches. Status changes publish events to RabbitMQ, where a consumer consumes and executes Web Push alerts asynchronously.
+*   **Authentication & Self-Registration Portal:** 
+    - **Phase 1 (V1)**: Supabase Auth (GoTrue) coordinates authentication. The React frontend never accesses Supabase directly. Users register or log in via the Spring Boot `/auth` proxy API by providing registration number, email, phone number, and password, which the backend forwards to Supabase on the server side.
+    - **Phase 2 (V2)**: Keycloak coordinates authentication. Users redirect to Keycloak portals exposed behind the Kong Gateway.
+*   **Self-Registration Verification:** 
+    - **Phase 1 (V1)**: Registration number, email, and phone number are validated during registration against a pre-seeded enrollment list. If the registration number is already in use, the user is redirected to the login screen.
+    - **Phase 2 (V2)**: keycloak validates parameters against the enrollment list.
+*   **Single OTP for Password Operations:** 
+    - **Phase 1 (V1)**: A single OTP (sent via email SMTP or SMS using MSG91 Send SMS Auth Hook) is used exclusively for password resets and recovery.
+    - **Phase 2 (V2)**: Keycloak realm dispatches single OTPs via Resend.com SMTP relay or MSG91 SMS custom SPI.
+*   **Automatic Profile Sync:** 
+    - **Phase 1 (V1) & Phase 2 (V2)**: On first successful login, the frontend sends the authenticated JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `phone_number`, `registration_number`, `department`, and `role`.
+*   **Database Caching & Decoupling (V2 Only):** 
+    - **Phase 2 (V2) Redis Caching**: High-concurrency event discovery requests (listing and detail queries) are cached in Redis to decrease response times and prevent PostgreSQL database connection limits from being saturated during peaks. (No caching/Redis in V1).
+    - **Phase 2 (V2) RabbitMQ Message Queue**: Decouples the main transactional thread from I/O heavy notification dispatches. Status changes publish events to RabbitMQ, where a consumer consumes and executes Web Push alerts asynchronously. (In V1, notifications are executed in simple Spring `@Async` threads).
+
 
 ### 1.2 Event Listing & Discovery
 *   **Discovery Board:** Authenticated students and faculty can browse and view active/upcoming events.
@@ -22,7 +27,7 @@
 *   **Event Creation & Publishing Interface:** Both Student and Faculty Coordinators can create events (saved as drafts). However, to prevent miscommunication and ensure safety, only Faculty Coordinators and department SPOCs have the authority to publish events.
 *   **Collaborative Management:** When creating an event, the creator (Student or Faculty Coordinator) is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event. Student Coordinators do NOT have permissions to manage (add or remove) collaborators on the event.
 *   **Event Modification:** Any coordinator assigned to an event has full modification permissions to edit details, manage registrations, and verify payments.
-*   **Parameters:** Configurable capacity limits, price, active flags, and UPI payment details.
+*   **Parameters:** Configurable capacity limits, price, active flags, UPI payment details, and event assets (banners, posters, event photos).
 *   **Overbooking Control:** Enforce strict capacity caps using Postgres row-level locks when seat allocations or registrations occur.
 
 ### 1.4 Ticket Booking & Payment Submission (V1)
@@ -36,7 +41,7 @@
     *   *Slots Available:* Clicking register opens a modal showing a static UPI QR code. The student must scan/pay external to the app, input the 12-digit UPI Reference Transaction ID, and upload the payment screenshot. Upon submission, they are placed in `PENDING_PAYMENT_VERIFICATION` status.
     *   *Slots Full:* The pay option is disabled. Clicking register places the student on the `WAITING_LIST` immediately. No payment details or screenshots are collected upfront.
 *   **Refund Policy for Cancellations:** If a student cancels their registration after paying (when the status is `PENDING_PAYMENT_VERIFICATION` or `CONFIRMED`), they can select "Cancel Registration", and their paid amount will be refunded within 24 hours.
-*   **Image Storage:** Frontend sends screenshot files directly to the Spring Boot backend, which puts it into AWS S3 and records the S3 URL in the database.
+*   **Image & Asset Storage:** The system utilizes AWS S3 for storage. The frontend sends user profile images, event assets (banners, posters, event photos), and payment confirmation screenshots to the Spring Boot backend, which uploads them to AWS S3 and stores their URLs in the database.
 
 ### 1.5 Verification Dashboard
 *   **Review Queue:** Assigned coordinators see registrations filtered by status (`PENDING_PAYMENT_VERIFICATION`, `CONFIRMED`, `REJECTED`, `PENDING_PAYMENT`, `WAITING_LIST`).
@@ -107,6 +112,7 @@ flowchart TD
 *   **Max Upload Size:** Screenshots must be constrained to 5MB, limited to `.png`, `.jpg`, and `.jpeg` formats.
 *   **UPI Reference Format:** Restrict the transaction ID input to a 12-digit numeric format.
 *   **Skeleton Loading:** Use HeroUI skeletons during data fetch delays to enhance user experience.
+*   **Architectural Foundations:** Enforce a strict 3-Tier React Frontend architecture and Spring Boot Ports & Adapters backend architecture from Phase 1 (V1) to maintain consistency as the application scales to Enterprise Phase 2 (V2).
 
 ---
 

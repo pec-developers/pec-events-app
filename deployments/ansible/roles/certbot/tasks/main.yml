@@ -1,0 +1,28 @@
+---
+- name: Install Certbot and Nginx certificate plugin
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Check if SSL certificate already exists
+  stat:
+    path: "/etc/letsencrypt/live/{{ api_domain_name }}/fullchain.pem"
+  register: cert_file
+
+- name: Run Certbot to generate and install SSL certificate
+  command: >
+    certbot --nginx
+    -d {{ api_domain_name }}
+    --non-interactive
+    --agree-tos
+    --email {{ certbot_email }}
+    --redirect
+  when: not cert_file.stat.exists
+
+- name: Ensure Certbot systemd renew timer is running
+  service:
+    name: certbot.timer
+    state: started
+    enabled: yes

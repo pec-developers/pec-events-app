@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  s3-emulator:
+    image: minio/minio:latest
+    container_name: genlab-lms-s3-local
+    ports:
+      - "9000:9000" # S3 API endpoint
+      - "9001:9001" # S3 Console UI dashboard
+    environment:
+      MINIO_ROOT_USER: local-admin
+      MINIO_ROOT_PASSWORD: local-password
+    volumes:
+      - ./local-s3-data:/data
+    command: server /data --console-address ":9001"

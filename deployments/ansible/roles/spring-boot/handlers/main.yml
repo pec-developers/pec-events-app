@@ -1,0 +1,5 @@
+---
+- name: Restart Spring Boot Application
+  service:
+    name: spring-app
+    state: restarted

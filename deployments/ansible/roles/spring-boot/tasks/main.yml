@@ -1,0 +1,48 @@
+---
+- name: Create springapp system group
+  group:
+    name: springapp
+    state: present
+    system: yes
+
+- name: Create springapp system user
+  user:
+    name: springapp
+    group: springapp
+    shell: /usr/sbin/nologin
+    system: yes
+    create_home: no
+
+- name: Ensure target directory exists and is owned by springapp
+  file:
+    path: "{{ app_dest }}"
+    state: directory
+    owner: springapp
+    group: springapp
+    mode: '0755'
+
+- name: Copy Spring Boot JAR application artifact
+  copy:
+    src: "{{ app_local_src }}"
+    dest: "{{ app_dest }}/app.jar"
+    owner: springapp
+    group: springapp
+    mode: '0755'
+  notify: Restart Spring Boot Application
+
+- name: Deploy systemd service configuration
+  template:
+    src: spring-app.service.j2
+    dest: /etc/systemd/system/spring-app.service
+    mode: '0644'
+  notify: Restart Spring Boot Application
+
+- name: Force systemd daemon reload
+  systemd:
+    daemon_reload: yes
+
+- name: Ensure Spring Boot service is enabled and running
+  service:
+    name: spring-app
+    state: started
+    enabled: yes

@@ -1,0 +1,15 @@
+[Unit]
+Description=Spring Boot Application
+After=syslog.target network.target
+
+[Service]
+User=springapp
+Group=springapp
+Type=simple
+ExecStart=/usr/bin/java -Dserver.port=8080 -Dspring.profiles.active=aws,{{ spring_profile }} -Dcors.allowed-origins={{ allowed_origins }} -jar {{ app_dest }}/app.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

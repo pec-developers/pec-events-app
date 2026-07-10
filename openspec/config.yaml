@@ -4,8 +4,11 @@ schema: spec-driven
 # This is shown to AI when creating artifacts.
 # Adds tech stack, conventions, style guides, domain knowledge, etc.
 context: |
-  Project Name: Prathyusha Engineering College's (PEC) Events Notification/Management Web App
+  Project Name: Prathyusha Engineering College's (PEC) Events Notification/Management Web App (pec-events-app)
   Application Type: Progressive Web App (PWA)
+  Deployment Domains:
+    - Frontend: events.pecdevelopers.com
+    - Backend API: api.events.pecdevelopers.com
   
   Domain & Key Purpose:
     - Allow students to discover and register for free and paid events.
@@ -13,7 +16,9 @@ context: |
   
   User Roles & Registration Policy:
     - Email Domain Rules: Allow registration with any email domain for all roles, relying on manual validation/coordination by event coordinators.
-    - Verification Policy: Sequential dual-channel OTP verification is required during self-registration in Keycloak before account creation completes. Keycloak dispatches an Email OTP via Resend.com SMTP relay, followed by a Phone/SMS OTP via Twilio custom SPI.
+    - Verification Policy:
+      - Phase 1 (V1): Direct user registration and authentication via Supabase Auth (GoTrue). User profiles are synchronized to the local database upon first login. Outgoing password reset / OTP emails are routed via Supabase-configured SMTP providers (e.g. Resend), and SMS/OTP is routed via MSG91 using a custom Deno-based Send SMS Auth Hook.
+      - Phase 2 (V2): Sequential dual-channel OTP verification is required during self-registration in Keycloak (IdP) before account creation completes (Email OTP via Resend.com SMTP relay, followed by Phone/SMS OTP via MSG91 custom SPI).
     - Roles:
       1. Student / Participant: Can browse events, register, submit payment confirmation (UPI screenshot + transaction ID), and receive notifications.
       2. Student Coordinator: Can publish events, view/manage registrations, and has full authority to verify/approve payments and registrations.
@@ -21,31 +26,44 @@ context: |
       4. System Admin: Manage users, roles, system parameters, global settings, audit logs, and infrastructure monitoring.
   
   Tech Stack & Architecture:
-    - Frontend: React (v19), Zustand (State Management), TypeScript, HeroUI v3 (previously NextUI, styled with Tailwind CSS v4, WCAG compliant via React Aria).
-      - Routing: React Router v7.
-      - Directory layout enforces separation of concerns:
-        - `src/api/` for raw API calls.
-        - `src/stores/` for Zustand state management and data formatting logic.
-        - `src/components/` and `src/pages/` for UI and views.
-    - Backend: Spring Boot, Keycloak (Identity Provider), Kong (API Gateway).
-      - Authentication Flow: React frontend authenticates directly against Keycloak via Authorization Code Flow + PKCE (with Keycloak routes exposed under the Kong gateway, e.g., via `/auth/*` paths), stores the JWT, and sends it in the Authorization header to the Kong Gateway, which proxies to Spring Boot backend services.
-      - User Sync: Basic user profile details (ID, name, email, department, role) are synchronized from Keycloak to the local PostgreSQL database on first successful login to enable seamless SQL joins.
-    - Database: Managed Supabase Cloud (PostgreSQL).
-    - Storage: Dedicated AWS S3 bucket provisioned via Terraform; screenshot uploads are handled directly by the Spring Boot backend.
-    - Infrastructure:
-      - Cloud Provider: AWS
-      - Infrastructure as Code: Terraform (managing AWS S3, CloudFront, Route 53, EKS clusters, and Supabase provisioning)
-      - Environments: dev (development) and prod (production)
-      - Frontend Hosting: AWS S3 + CloudFront + Route 53 (CDN and DNS)
-      - Backend & Services Deployment: Managed via Helm charts stored in the repository, deployed onto AWS EKS (Kubernetes) clusters
-      - Database: Supabase provisioning and PostgreSQL schema migrations/configurations managed in the repository
-      - CI/CD: GitHub Actions pipelines for automated testing, containerization (Docker), Helm packaging, and deployment to dev/prod environments
+    - Phase 1 (V1):
+      - Frontend: React (v19) SPA, Zustand, TypeScript, HeroUI v3 + Tailwind CSS v4, React Router v7.
+        - Directory layout enforces separation of concerns (3-Tier Architecture):
+          - View Layer: `src/components/`, `src/components/ui/`, `src/pages/` for presentation UI. No direct API calls or complex business logic.
+          - Data & State Layer: `src/hooks/` for custom hooks, `src/stores/` (Zustand state), `src/data/` for static configuration.
+          - API & Service Layer: `src/services/` (strategy pattern/orchestration), `src/api/` (raw Axios calls and types).
+      - Backend: Spring Boot backend exposing direct REST endpoints (no gateway). Auth requests are received via `/auth/**` endpoints and proxied to Supabase Auth on the server-side. Utilizes a custom `SupabaseJwtFilter` to decode and validate Supabase JWT signatures symmetrically (using the shared JWT secret) or asymmetrically (using Supabase JWKS public keys).
+        - Architecture Style: Decoupled Service Layers (Ports & Adapters).
+          - Port Interfaces defined in `service/port/` and implementation classes directly in `service/`.
+          - Decoupled model structure: `model/entity/` (JPA entities), `model/dto/` (payload DTOs), `model/enums/`, and `model/converter/`.
+          - Segregated controllers: `controller/admin/`, `controller/student/` or `controller/participant/`, `controller/coordinator/`, `controller/shared/`, and a global `controller/advice/ExceptionHandler`.
+      - Security: AOP aspect `@RequiresRole` checks request authorization by querying the user role from the local database via `RoleService`.
+      - Configuration:
+        - Default profile (Scenario A) runs against local PostgreSQL (default port 54322).
+        - Active profile `aws` (Scenario B) imports datasource and third-party configuration dynamically from AWS Secrets Manager using Spring Cloud AWS (`/config/pec-events-api_${spring.profiles.active:dev}`).
+      - Local Tooling & Mocking:
+        - S3 storage emulator using local MinIO (port 9000).
+        - Outgoing email/OTP catcher using local Inbucket (port 54324).
+      - Database: Managed Supabase Cloud (PostgreSQL).
+      - Storage: AWS S3 bucket (or MinIO emulator locally) for user profile images, event assets (posters, banners, event photos), and manual payment receipt uploads.
+      - Notifications & Caching: Handled synchronously or using standard Spring `@Async` threads (no Redis or RabbitMQ in V1).
+      - Infrastructure: Deployed as standalone containers/VMs (no AWS EKS, Kong Gateway, or Keycloak in V1).
+    - Phase 2 (V2):
+      - Identity & Gateway: Keycloak (Identity Provider), Kong (API Gateway).
+        - Authentication Flow: React frontend authenticates directly against Keycloak via Authorization Code Flow + PKCE (with Keycloak routes exposed under the Kong gateway, e.g., via `/auth/*` paths), stores the JWT, and sends it in the Authorization header to the Kong Gateway, which proxies to Spring Boot backend services.
+        - User Sync: Basic user profile details (ID, name, email, department, role) are synchronized from Keycloak to the local PostgreSQL database on first successful login.
+      - Caching: Redis cluster deployed in EKS to cache event query listings.
+      - Queue: RabbitMQ broker deployed in EKS to asynchronously process push notification dispatches.
+      - Storage: AWS S3 bucket for screenshot uploads, provisioned via Terraform and served via CloudFront.
+      - Infrastructure: AWS EKS Kubernetes clusters managed via Helm charts, Route 53 DNS, CloudFront CDN, and Terraform.
+
 
 
   
   Design & Aesthetics:
     - SOLID design principles.
     - Component Library: HeroUI v3 (previously NextUI) integrated with Tailwind CSS v4 and React Aria (WCAG compliant).
+    - Icon Library: Gravity UI Icons (`@gravity-ui/icons`) for consistent and accessible iconography.
     - Match PEC's official institutional brand identity using maroon red accents (primary color: #a80000).
     - Theme layout: Sleek academic-tech theme, light mode by default with dark mode support, modern typography, smooth gradients, subtle micro-animations, and skeleton screen loading states (using HeroUI skeleton components).
 

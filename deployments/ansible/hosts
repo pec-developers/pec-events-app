@@ -1,0 +1,2 @@
+[backend_servers]
+# Dynamic targets will be injected here during pipeline run or passed via CLI parameter

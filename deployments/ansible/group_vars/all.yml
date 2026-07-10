@@ -1,0 +1,4 @@
+---
+app_dest: /var/www/spring-app
+app_local_src: ../../app/backend/target/app.jar
+certbot_email: admin@pecdevelopers.com

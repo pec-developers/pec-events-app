@@ -1,48 +1,64 @@
 # PEC Events Web App
 
-A Progressive Web App (PWA) for managing and notifying events at **Prathyusha Engineering College (PEC)**. It facilitates event registration for students and event coordination and publication for faculty/student coordinators.
+A Progressive Web App (PWA) for managing and notifying events at **Prathyusha Engineering College (PEC)**. It facilitates event registration for students and event coordination and publication for faculty and student coordinators.
 
 ---
 
 ## 🚀 Project Overview
 
-The PEC Events Notification/Management Web App is designed to streamline how college events (both free and paid) are published, discovered, registered for, and audited. 
-- **Application Type:** Progressive Web App (PWA) with push notifications.
-- **Estimated Scale:** Designed to handle peak concurrency of 1,000 - 6,000 concurrent devices.
-- **Current Phase (V1):** Manual UPI QR code payment and screenshot uploads.
-- **Future Phase (V2):** Razorpay API gateway integration and analytical coordinator dashboards.
+The PEC Events Notification/Management Web App is designed to streamline how college events (both free and paid) are published, discovered, registered for, and audited.
+
+The project is structured into two main phases to ensure a fast, robust rollout followed by a transition to a highly scalable enterprise architecture:
+- **Version 1 (V1 - Lightweight Stack)**: Focuses on quick deployment using a simplified architecture. Direct client-server endpoints, Supabase Auth/Database, and manual payment verification (UPI screenshots + transaction IDs).
+- **Version 2 (V2 - Enterprise Stack)**: Scales the platform to handle up to 6,000 concurrent devices using Kubernetes (AWS EKS), Kong API Gateway, Keycloak, Redis caching, and RabbitMQ messaging.
 
 ---
 
 ## 🛠️ Technology Stack & Architecture
 
-### Frontend
-- **Framework & Language:** React (v19), TypeScript.
-- **Component Library:** HeroUI v3 (formerly NextUI) with Tailwind CSS v4 and React Aria (WCAG compliant).
-- **State Management:** Zustand.
-- **Routing:** React Router v7.
-- **Architectural Layers:**
-  - **API Layer (`src/api/`):** Directly manages network interaction and backend payloads.
-  - **Data Layer (`src/stores/`):** Manages local state formatting, business logic, and caching using Zustand.
-  - **View Layer (`src/components/` & `src/pages/`):** Renders accessible, responsive UI pages.
+### Phase 1 (V1): Lightweight Stack (Current Scope)
+- **Frontend SPA**: React (v19), Zustand state management, TypeScript, React Router v7.
+  - **Styling**: HeroUI v3 (formerly NextUI) with Tailwind CSS v4 and React Aria (WCAG compliant).
+  - **Aesthetics**: Sleek academic-tech theme utilizing maroon red accents matching PEC's institutional brand (primary: `#a80000`), micro-animations, and skeleton loaders.
+  - **3-Tier Architecture**:
+    - **View Layer ([app/frontend/src/components/](app/frontend/src/components/), [app/frontend/src/pages/](app/frontend/src/pages/))**: Visual UI representation. No raw API imports or business logic.
+    - **Data & State Layer ([app/frontend/src/hooks/](app/frontend/src/hooks/), [app/frontend/src/stores/](app/frontend/src/stores/))**: Local state, custom hooks, global Zustand stores, and static configs.
+    - **API & Service Layer ([app/frontend/src/services/](app/frontend/src/services/), [app/frontend/src/api/](app/frontend/src/api/))**: API client configuration (Axios) and orchestration (Strategy registry patterns).
+- **Backend & REST API**: Spring Boot.
+  - **Architecture**: Decoupled service layers implementing the **Ports & Adapters (Hexagonal)** pattern.
+    - Service contracts are defined in `service/port/` and implemented directly under `service/`.
+    - Separated model subpackages: `model/entity/` (JPA models), `model/dto/` (API transfer objects), `model/enums/`, and `model/converter/`.
+    - Segregated controller packages: `controller/admin/`, `controller/student/` or `controller/participant/`, `controller/coordinator/`, `controller/shared/`, and global exception handler in `controller/advice/`.
+  - **JWT Authorization**: Custom `SupabaseJwtFilter` intercepting and verifying Supabase-issued JWT signatures symmetrically (via shared client secret) or asymmetrically (via Supabase JWKS endpoint).
+  - **Declarative Security**: Spring AOP aspect interceptor `@RequiresRole` resolves role requirements at class/method level and checks request context against the local database using a decoupled `RoleService`.
+- **Identity & Authentication**: Supabase Auth (GoTrue).
+  - **User Registration Policy**: Direct sign-ups with any email domain (no domain restriction in V1, relying on manual validation).
+  - **SMS/OTP Delivery**: Custom Deno-based Send SMS Auth Hook ([deployments/supabase/functions/send-sms/index.ts](deployments/supabase/functions/send-sms/index.ts)) that intercepts Supabase OTP dispatches and forwards them to the **MSG91 v5 OTP API** (removing the leading `+` for TRAI DLT compliance), replacing native Twilio configuration.
+  - **Email Delivery**: Outgoing password resets and OTP verification emails routed via Supabase-configured SMTP (e.g., Resend).
+  - **User Synchronization**: Basic user profile attributes (name, email, role, department) are written to the local PostgreSQL database on first successful login.
+- **Database & Storage**:
+  - **Database**: Managed Supabase Cloud (PostgreSQL).
+  - **Ticket Overbooking Control**: Row-level locking (`SELECT ... FOR UPDATE` inside Spring Boot transactions) to handle peak concurrent registrations without overselling slots.
+  - **File Storage**: AWS S3 bucket (or local MinIO emulator) for user profile photos, event assets (banners/posters), and manual payment screenshots.
+- **Local Tooling & Mocking**:
+  - **Local PostgreSQL Container** running on port `54322`.
+  - **S3 Storage Emulator (MinIO)** running on port `9000` (`AWS_S3_ENDPOINT`).
+  - **Email Catcher (Inbucket)** running on port `54324` to capture OTP and magic link emails offline.
+- **Notifications & Caching**: Synchronous/Asynchronous handling using standard Spring `@Async` threads. ConcurrentMapCacheManager for basic in-memory caching.
+- **Infrastructure**: Standalone VM / container hosting (bypassing EKS, Keycloak, and Kong in V1).
 
-### Backend & API
-- **Framework:** Spring Boot.
-- **API Gateway:** Kong Gateway (exposes Keycloak routes under `/auth/*` and proxy requests to Spring Boot services).
-- **Identity Provider:** Keycloak (OAuth2 Authorization Code Flow + PKCE).
-- **User Sync:** Basic profile details (names, emails, roles, department) are synchronized into the PostgreSQL database on first successful login to enable fast SQL joins.
-
-### Database & Storage
-- **Database:** Managed Supabase Cloud (PostgreSQL).
-- **Concurrency Control:** Database row-level locking (`SELECT ... FOR UPDATE` inside Spring Boot transactions) to prevent overbooking of event slots.
-- **File Storage:** AWS S3 (for manual payment screenshot uploads) provisioned via Terraform, managed directly by the backend.
-
-### DevOps & Infrastructure
-- **Infrastructure as Code (IaC):** Terraform managing AWS resources (EKS, S3, CloudFront, Route 53) and Supabase settings.
-- **Containerization & Ingress:** Kubernetes (AWS EKS) with Helm charts managed inside the repository for service deployment.
-- **CDNs & DNS:** AWS S3 + CloudFront + Route 53 for frontend static hosting and DNS.
-- **Pipelines:** GitHub Actions for building, testing, containerizing, Helm packaging, and deploying to target environments.
-- **Environments:** `dev` (development) and `prod` (production).
+### Phase 2 (V2): Enterprise Stack (Future Scope)
+- **Identity & Gateway**: Keycloak (IdP) + Kong API Gateway.
+  - **Auth Flow**: React SPA authenticates directly against Keycloak via Authorization Code Flow + PKCE. Front-end sends JWT to Kong, which proxies to Spring Boot backend services.
+  - **Keycloak OTP Flow**: Sequential dual-channel verification (Email OTP via Resend.com, followed by SMS OTP via MSG91 Custom SPI) required during self-registration.
+  - **User Sync**: Basic user profile details synchronized to local database on first login.
+- **Caching & Messaging**:
+  - **Redis Cache**: Deployed in EKS to cache event query listings.
+  - **RabbitMQ Broker**: Deployed in EKS to asynchronously process push notification dispatches.
+- **DevOps & Infrastructure**:
+  - **Kubernetes (AWS EKS)**: Services deployed via Helm charts.
+  - **CDNs & Routing**: CloudFront + Route 53 for static frontend hosting, asset delivery, and DNS.
+  - **Infrastructure as Code (IaC)**: Terraform managing AWS resources (EKS, S3, CloudFront, Route 53) and Supabase settings.
 
 ---
 
@@ -51,7 +67,7 @@ The PEC Events Notification/Management Web App is designed to streamline how col
 1. **Student / Participant**
    - Discover events, register for free and paid sessions.
    - Upload UPI payment screenshots and transaction IDs for manual payment registration verification.
-   - Receive real-time push notifications.
+   - Receive real-time push notifications (Web Push API with Service Workers).
 2. **Student Coordinator**
    - Publish college events.
    - View, verify, and approve registration requests and payment screenshots.
@@ -66,19 +82,28 @@ The PEC Events Notification/Management Web App is designed to streamline how col
 ## 🧪 Testing & Quality Assurance
 
 This project follows the **STLC (Software Testing Life Cycle)** with a strict **docs-first testing process**:
-- **Test Scenarios:** Test specifications and test cases must be designed and documented prior to writing functional code.
-- **Testing Focus:** Concentrated on:
-  - **Unit Testing:** Ensuring business logic functions correctly in isolation (Vitest on frontend; JUnit & Mockito on backend).
-  - **Integration Testing:** Ensuring controllers, repositories, databases, and gateways integrate seamlessly (React Testing Library on frontend; Spring Boot Test on backend).
+- **Test Scenarios**: Test specifications and test cases must be designed and documented prior to writing functional code (located in [testing_spec.md](docs/testing_spec.md)).
+- **Testing Focus**: Concentrated on:
+  - **Unit Testing**: Ensuring business logic functions correctly in isolation (Vitest on frontend; JUnit & Mockito on backend).
+  - **Integration Testing**: Ensuring controllers, repositories, databases, and gateways integrate.
 
 ---
 
 ## 📂 Repository Structure
 
-- `docs/` — Business and technical requirements (BRD, PRD, HLD, LLD).
-- `frontend/` — React frontend codebase (API, stores, components).
-- `backend/` — Spring Boot backend codebase. (To be initialized)
-- `infra/` — Terraform configurations and Helm charts. (To be initialized)
+- `docs/` — Business and technical requirements:
+  - [BRD (Business Requirements Document)](docs/brd.md)
+  - [PRD (Product Requirements Document)](docs/prd.md)
+  - [HLD (High-Level Design)](docs/hld.md)
+  - [LLD (Low-Level Design)](docs/lld.md)
+  - [User Flow Docs](docs/user-flow-docs.md)
+  - [Testing Spec](docs/testing_spec.md)
+- `app/frontend/` — React frontend SPA codebase.
+- `app/backend/` — Spring Boot backend codebase.
+- `deployments/` — Deployments and local dev infrastructure configuration:
+  - `ansible/` — Configuration management scripts.
+  - `supabase/` — Supabase migrations, Deno Edge functions (`send-sms`), and config.
+  - `terraform/` — IaC configurations.
 - `openspec/` — OpenSpec configuration and specs.
 
 ---

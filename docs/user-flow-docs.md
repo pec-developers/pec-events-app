@@ -10,6 +10,7 @@ All interfaces must strictly adhere to the project's styling boundaries to ensur
 
 ### Theme Variables & Styling Framework
 - **Framework**: React 19, HeroUI v3 (previously NextUI), Tailwind CSS v4, and React Aria.
+- **Icon Library**: Gravity UI Icons (`@gravity-ui/icons`) MUST be used for all UI icons (including close buttons, chevron arrows, zoom/rotate indicators, navigation bar, status badges, etc.).
 - **Color Palette**:
   - **Primary Brand Accent**: Maroon Red (`#a80000`) for call-to-action buttons, active navigation markers, selection borders, focus outlines, and primary links.
   - **Light Mode (Default)**: Bright slate/white backgrounds (`#f8fafc`, `#ffffff`) with charcoal gray typography.
@@ -18,6 +19,7 @@ All interfaces must strictly adhere to the project's styling boundaries to ensur
 - **Micro-Animations**: Subtle hover transitions on buttons, cards, and list items (e.g., `transition-all duration-200 ease-in-out scale-95` on clicks, `hover:translate-y-[-2px]`).
 - **Loading States**: Skeletons (using HeroUI `Skeleton` component) displayed in place of event cards, registration tables, and dashboard components during async data fetching.
 - **Accessibility (WCAG)**: Proper focus indicator rings (utilizing React Aria states), appropriate keyboard navigability (`Tab` progression, `Enter` activation), and ARIA landmark tags (`aria-label`, `aria-describedby`) for interactive modal overlays.
+
 
 ---
 
@@ -44,23 +46,33 @@ src/
 ### 3.1 Unified Layout Routing (`/dashboard`)
 To simplify route guards and component layouts:
 - A single user-facing route `/dashboard` is declared.
-- Upon mounting, the layout wrapper checks Keycloak JWT claims for roles (`STUDENT`, `STUDENT_COORDINATOR`, `FACULTY_COORDINATOR`, `SPOC`, `ADMIN`).
+- Upon mounting, the layout wrapper checks the authenticated user context for roles (`STUDENT`, `STUDENT_COORDINATOR`, `FACULTY_COORDINATOR`, `SPOC`, `ADMIN`).
+  - **In Version 1**: Renders layout based on role retrieved from the backend API `/api/profile` (or decoded from the Supabase JWT metadata).
+  - **In Version 2**: Renders layout based on role claims found directly in the Keycloak JWT token attributes.
 - Depending on the user's role, the dashboard dynamically renders the appropriate sub-layout:
   - **Student Sub-layout**: Event browsing grid, active registrations tab, countdown banners.
   - **Coordinator Sub-layout**: Quick-actions panel, event listing editor, payment review queue tab.
   - **SPOC Sub-layout**: Department coordinator management tab, audit logs, department event overview.
-  - **Admin Sub-layout**: Realm config links, CSV enrollment uploader, global system parameters.
+  - **Admin Sub-layout**: Management panels, CSV enrollment uploader, global system parameters (including keycloak link configuration in V2).
 
 ---
 
-### 3.2 Sequential Dual-OTP Self-Registration Flow
-Self-registration happens inside Keycloak's login theme, which redirects to the registration panel.
+### 3.2 User Registration and Authentication Flow
 
-1. **Unique ID Validation**: The user provides registration credentials (Registration Number, Email, Phone, Password). If the Registration Number is already matched to an active Keycloak user, they are immediately redirected to the login page with an error banner: *“Registration number already in use. Please log in.”*
+#### 3.2.1 Version 1 Registration & Profile Sync (Supabase Auth)
+In V1, user registration and login are orchestrated via custom React forms routed through the Spring Boot backend auth proxy:
+1. **Details Input**: The student enters registration credentials (Registration Number, Email, Phone, Name, Password) on the React registration page.
+2. **Validation & Proxy Request**: The React client posts the credentials to the Spring Boot endpoint `/api/auth/register`. Spring Boot validates the user details against the pre-seeded department enrollment database, then calls Supabase Auth on the server-side via GoTrue admin/client APIs to create the account.
+3. **Email Verification**: Supabase dispatches a confirmation email containing a magic link or 6-digit OTP code to verify the account.
+4. **First Login Profile Sync**: Once verified, the user logs in via the React client calling Spring Boot's `/api/auth/login` endpoint. Spring Boot logs the user in via Supabase, retrieves the JWT, sets the JWT inside an HTTP-only cookie (`authToken`), checks if the user profile exists in the database `users` table, and inserts the synced metadata if missing.
+
+#### 3.2.2 Version 2 Registration & Dual-OTP Flow (Keycloak)
+In V2, registration redirects users to Keycloak-hosted login/registration portals behind the Kong Gateway:
+1. **Unique ID Validation**: The user provides registration credentials. If the Registration Number is already matched to an active Keycloak user, they are immediately redirected to the login page with an error banner: *“Registration number already in use. Please log in.”*
 2. **Sequential Dual-OTP Verification**:
-   - **Step 1: Email OTP**: Keycloak dispatches an OTP code to the email via Resend.com. The registration page displays an email code input field with a ticking 60-second retry countdown timer.
-   - **Step 2: Phone OTP**: Upon email validation success, the screen transitions to the SMS OTP code input field. Keycloak dispatches a code via Twilio SMS.
-   - **Completion**: Once both OTPs are validated, the Keycloak user account creation completes, the JWT is issued, and the user is redirected to the app.
+   - **Step 1: Email OTP**: Keycloak dispatches an OTP code to the email via Resend.com SMTP relay. React UI renders a countdown timer for code entry.
+   - **Step 2: Phone OTP**: Upon email validation success, Keycloak dispatches a SMS OTP via MSG91 SMS SPI.
+   - **Completion**: Once both OTPs are validated, Keycloak completes account creation and redirects back with the authorization code.
 
 ---
 
@@ -111,7 +123,7 @@ Faculty Coordinators and SPOCs can assign event collaborators dynamically.
 
 - **Department Autocomplete Input**: Search field dynamically filters active Student and Faculty coordinators *only* from the creator's academic department.
 - **Selection Visuals**: Selected coordinators are appended below the search bar as interactive badges/chips containing their name, role, and avatar picture.
-- **Removal**: Badge chips feature a close cross icon (`×`) to immediately remove the collaborator from the assignment list.
+- **Removal**: Badge chips feature a close icon (`Xmark` from `@gravity-ui/icons`) to immediately remove the collaborator from the assignment list.
 - **Access Limits**: Student Coordinators can view assigned collaborators but cannot add or remove them.
 
 ---
@@ -126,7 +138,37 @@ To maximize Web Push subscription opt-ins:
 
 ## 4. Mermaid Flow Diagrams
 
-### 4.1 Sequential Dual-OTP Self-Registration Process
+### 4.1.1 Version 1 Supabase Auth Registration & Sync Process
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Student
+    participant UI as React UI (HeroUI)
+    participant SB as Supabase Auth
+    participant BE as Spring Boot Backend
+    participant DB as Supabase PostgreSQL
+    
+    Student->>UI: Enter Credentials (Email, Phone, Name, Reg No, Password)
+    UI->>BE: POST /api/auth/register
+    BE->>BE: Validate details against pre-seeded enrollment list
+    BE->>SB: Create User (GoTrue API)
+    SB->>Student: Send email confirmation link / OTP
+    Student->>SB: Confirm verification link / input OTP
+    Student->>UI: Submit credentials (Login page)
+    UI->>BE: POST /api/auth/login
+    BE->>SB: Authenticate (GoTrue API)
+    SB-->>BE: Return JWT Access Token
+    BE->>BE: Set HTTP-Only Cookie (`authToken`) & validate JWT
+    BE->>DB: Query user by ID
+    alt User Profile Missing (First-time login)
+        BE->>DB: Insert profile (id, name, email, phone, reg_no, dept, role)
+    end
+    BE-->>UI: Return profile details & role context
+    UI-->>Student: Redirect to Unified `/dashboard`
+```
+
+### 4.1.2 Version 2 Keycloak Dual-OTP Registration Process
 
 ```mermaid
 sequenceDiagram
@@ -137,7 +179,7 @@ sequenceDiagram
     participant DB as PostgreSQL Database
     
     Student->>UI: Enter Registration Details (Email, Phone, Reg No, Password)
-    UI->>KC: Initiate Self-Registration API
+    UI->>KC: Initiate Self-Registration API (via Kong)
     Note over KC: Verify Registration Number against Pre-seeded List
     alt Reg Number Already Exists in Keycloak
         KC-->>UI: Return Error: "Registration number already in use"
@@ -152,7 +194,7 @@ sequenceDiagram
             KC-->>UI: Return Verification Error
             UI-->>Student: Show native error, retry or click Resend OTP
         else OTP Valid
-            KC->>KC: Dispatch Phone OTP via Twilio SMS SPI
+            KC->>KC: Dispatch Phone OTP via MSG91 SMS SPI
             KC-->>UI: Prompt Phone OTP Screen
             UI-->>Student: Display Phone OTP Input field & Resend link
             Student->>UI: Enter Phone OTP
@@ -163,7 +205,7 @@ sequenceDiagram
             else OTP Valid
                 KC->>KC: Create Account & Generate User JWT
                 KC-->>UI: Return successful Auth JWT bearer token
-                UI->>DB: Send token to Backend for User Profile Sync
+                UI->>DB: Send token to Backend for User Profile Sync (via Kong)
                 DB->>DB: Synchronize attributes (ID, Name, Email, Dept, Role)
                 UI-->>Student: Redirect to Unified /dashboard (Student View)
             end

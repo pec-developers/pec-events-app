@@ -1,0 +1,21 @@
+---
+- name: Update apt-cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install baseline utilities
+  apt:
+    name:
+      - curl
+      - gnupg2
+      - ca-certificates
+      - python3-pip
+      - python3-apt
+    state: present
+
+- name: Install OpenJDK 25 Runtime Environment
+  apt:
+    name: openjdk-25-jdk
+    state: present
+

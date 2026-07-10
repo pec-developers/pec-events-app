@@ -1,0 +1,4 @@
+---
+api_domain_name: api.staging.events.pecdevelopers.com
+spring_profile: staging
+allowed_origins: "https://staging.events.pecdevelopers.com"

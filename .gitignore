@@ -1,33 +1,28 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-node_modules
+# ==========================================
+# Dependencies & Package Managers
+# ==========================================
+node_modules/
 /.pnp
 .pnp.js
 
-# testing
-/coverage
-
-# production
+# ==========================================
+# Build & Distribution Outputs
+# ==========================================
+dist/
+dist-ssr/
 build/
-dist/ 
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-# misc
-.DS_Store
-.vscode
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# developemnt
-graphify-out/
-
-# Supabase
-.branches
-.temp
-
-# dotenvx
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+*.local
 .env
 .env.keys
 .env.local
@@ -37,7 +32,67 @@ graphify-out/
 .env.production.local
 !.env.example
 
+# ==========================================
+# Logs & Crash Dumps
+# ==========================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+crash.log
+crash.*.log
+
+# ==========================================
+# Testing & Code Coverage
+# ==========================================
+/coverage
+
+# ==========================================
+# Editors & IDEs
+# ==========================================
+
+# macOS OS-specific files
+.DS_Store
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Visual Studio / MSBuild
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# Spring Tool Suite (STS)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+.mvn/wrapper/maven-wrapper.jar
+
+# ==========================================
 # Terraform
+# ==========================================
 # Local .terraform directories
 **/.terraform/*
 
@@ -45,12 +100,8 @@ graphify-out/
 *.tfstate
 *.tfstate.*
 
-# Crash log files
-crash.log
-crash.*.log
-
 # Exclude all .tfvars files, which are likely to contain sensitive data, such as
-# password, private keys, and secrets. These should not be part of version 
+# password, private keys, and secrets. These should not be part of version
 # control as they are data points which are passed in at runtime or variables.
 *.tfvars
 *.tfvars.json
@@ -68,3 +119,16 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+
+# ==========================================
+# Supabase
+# ==========================================
+.branches/
+.temp/
+
+# ==========================================
+# Miscellaneous & Tooling
+# ==========================================
+HELP.md
+graphify-out/
+local-s3-data/

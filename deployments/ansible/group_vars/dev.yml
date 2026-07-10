@@ -1,0 +1,4 @@
+---
+api_domain_name: api.dev.events.pecdevelopers.com
+spring_profile: dev
+allowed_origins: "https://dev.events.pecdevelopers.com"

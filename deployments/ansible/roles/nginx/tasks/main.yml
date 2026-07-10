@@ -1,0 +1,35 @@
+---
+- name: Install Nginx server package
+  apt:
+    name: nginx
+    state: present
+
+- name: Check if SSL certificate exists
+  stat:
+    path: "/etc/letsencrypt/live/{{ api_domain_name }}/fullchain.pem"
+  register: nginx_ssl_cert
+
+- name: Place Nginx configuration file for backend API
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/backend
+  notify: Restart Nginx
+
+- name: Enable the Nginx site configuration
+  file:
+    src: /etc/nginx/sites-available/backend
+    dest: /etc/nginx/sites-enabled/backend
+    state: link
+  notify: Restart Nginx
+
+- name: Disable the default Nginx configuration
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Restart Nginx
+
+- name: Ensure Nginx service is started and enabled
+  service:
+    name: nginx
+    state: started
+    enabled: yes
