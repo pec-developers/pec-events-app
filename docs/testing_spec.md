@@ -17,22 +17,25 @@ flowchart LR
 
 ## 2. Test Strategy
 
-### 2.1 Frontend Testing (Vitest & React Testing Library)
+### 2.1 Frontend Testing (Vitest & happy-dom)
 *   **Unit Tests:** Verify store actions, token management, and data formatting inside Zustand stores (`authStore.ts`, `eventsStore.ts`).
 *   **Integration/UI Tests:** Verify React component updates, skeleton loader displays, routing security boundaries, and HeroUI component behavior. 
-    - In V1, mock the Spring Boot backend auth proxy endpoints.
-    - In V2, mock Keycloak auth redirection and token issuance.
+*   **Directory Layout**: Tests must be co-located in `__tests__/` subfolders local to each architectural layer (e.g., `src/api/__tests__/`, `src/hooks/__tests__/`, `src/components/**/__tests__/`).
+*   **Network Interception**: Run MSW (Mock Service Worker) node server to intercept requests at the HTTP request layer. Configure the interceptor in `src/api/setupTests.ts` and leverage handlers and fixtures under `src/api/mocks/`.
 
-### 2.2 Backend Testing (JUnit 5 & Spring Boot Test)
-*   **Unit Tests:** Verify business validations, slot checks, and expiry logic.
-*   **Mock Verification:** 
+### 2.2 Backend Testing (JUnit 5 & Mockito)
+*   **Unit Tests**: Validate business rules, constraints, aspects, and validations.
+    - Leverage Mockito Extension (`@ExtendWith(MockitoExtension.class)`) for mock injections.
+    - Test aspects/interceptors by injecting mock `HttpServletRequest` via `RequestContextHolder.setRequestAttributes`.
+*   **Mock Verification**: 
     - In V1, authenticate using mock Supabase JWT signatures processed by `SupabaseJwtFilter`.
     - In V2, verify Keycloak authentication filters with mock JWT signatures.
-*   **Integration Tests:** Database transactions and row-level locking logic validated using Testcontainers (embedded/docker PostgreSQL instances).
-*   **API Tests:** Endpoint validation with MockMvc checks.
+*   **Integration Tests**: Database transactions and row-level locking logic validated using Testcontainers (embedded/docker PostgreSQL instances).
+*   **API Slices (WebMvc Tests)**: Endpoint validation using `MockMvc` and mock bean injections (via `@MockitoBean` or equivalent). Verify payload formatting, HTTP response statuses, and JSON validation schemas.
 *   **Local Infrastructure Mocks (V1)**: 
     - Outgoing emails/verification codes are captured using local **Inbucket** (`http://localhost:54324`).
     - AWS S3 bucket uploads are emulated using local **MinIO** API endpoints (`http://localhost:9000`).
+*   **Test Environment Config**: Disables cloud integrations (e.g., set `spring.cloud.aws.secretsmanager.enabled = false` in `src/test/resources/application.yaml`) for offline verification.
 
 ---
 

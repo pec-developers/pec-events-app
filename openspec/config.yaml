@@ -81,7 +81,15 @@ context: |
     - V2 (Future): Integration of Razorpay API for direct online payments, plus detailed analytics dashboard for coordinators.
   
   Testing & QA Strategy:
-    - Focus Areas: Primarily Unit and Integration testing for both frontend (e.g., Vitest, React Testing Library) and backend (e.g., JUnit, Spring Boot Test).
+    - Focus Areas: Primarily Unit and Integration testing for both frontend and backend.
+    - Frontend Testing:
+      - Framework: Vitest using `happy-dom`.
+      - Isolation: Mock Service Worker (MSW) server intercepts Node-level HTTP requests using generated/custom handlers. No live backend calls.
+      - Layout: Co-located `__tests__/` folders local to each architecture tier (`api/`, `services/`, `hooks/`, `stores/`, `components/`).
+    - Backend Testing:
+      - Frameworks: JUnit 5, Mockito, AssertJ, MockMvc.
+      - Strategy: Service/aspect testing via JUnit/Mockito (`@ExtendWith(MockitoExtension.class)`); API slice testing via `@WebMvcTest` with `MockMvc` and mock beans; integration testing via `@SpringBootTest` with Testcontainers.
+      - Properties: Dedicated `src/test/resources/application.yaml` disables cloud loaders (e.g., `spring.cloud.aws.secretsmanager.enabled: false`) for local/offline testing.
     - Lifecycle: Follow the Software Testing Life Cycle (STLC) lifecycle. Write test case specifications, design test scenarios, and write/maintain testing documentation first, then implement coding to satisfy those tests (docs-first testing process).
   
   Documentation Requirements:
