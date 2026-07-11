@@ -524,11 +524,60 @@ frontend/src/
           "status": "REGISTERED"
         }
         ```
-    *   **Response JSON (409 Conflict - Registration Number Exists):**
-        ```json
+        ```
         {
           "errorCode": "REGISTRATION_NUMBER_EXISTS",
           "message": "Registration number already exists. Redirecting to login."
+        }
+        ```
+
+*   **Direct Headless Login Endpoint**
+    *   **Path:** `POST /api/auth/login`
+    *   **Request JSON:**
+        ```json
+        {
+          "email": "student@pec.edu",
+          "password": "securepassword123"
+        }
+        ```
+    *   **Response JSON (200 OK):**
+        ```json
+        {
+          "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
+          "name": "Jane Doe",
+          "email": "student@pec.edu",
+          "role": "STUDENT",
+          "department": "CSE",
+          "registrationNumber": "PEC12345",
+          "accessToken": "jwt_token_string"
+        }
+        ```
+    *   **Response Headers:**
+        `Set-Cookie: authToken=jwt_token_string; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`
+
+*   **Logout Endpoint**
+    *   **Path:** `POST /api/auth/logout`
+    *   **Response JSON (200 OK):**
+        ```json
+        {
+          "message": "Logged out successfully"
+        }
+        ```
+    *   **Response Headers:**
+        `Set-Cookie: authToken=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
+
+*   **Role-Based Status Check Endpoint**
+    *   **Path:** `GET /api/auth/me`
+    *   **Headers:** `Cookie: authToken=jwt_token_string` or `Authorization: Bearer jwt_token_string`
+    *   **Response JSON (200 OK):**
+        ```json
+        {
+          "userId": "u5f6g7h8-90ij-klmn-opqr-stuvwxyz1234",
+          "name": "Jane Doe",
+          "email": "student@pec.edu",
+          "role": "STUDENT",
+          "department": "CSE",
+          "registrationNumber": "PEC12345"
         }
         ```
 

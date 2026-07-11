@@ -1,0 +1,31 @@
+# deployments/helm/values.yaml
+
+replicaCount: 1
+
+image:
+  repository: pecdevelopers/pec-events-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: api.events.pecdevelopers.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+env:
+  springProfilesActive: "dev"
+  databaseUrl: "jdbc:postgresql://localhost:54322/postgres"
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

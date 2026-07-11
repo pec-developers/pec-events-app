@@ -1,0 +1,18 @@
+# deployments/helm/values-prod.yaml
+
+replicaCount: 3
+
+image:
+  tag: "prod"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api.events.pecdevelopers.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+env:
+  springProfilesActive: "prod"
+  databaseUrl: "jdbc:postgresql://postgres-prod-endpoint:5432/pec_events_prod"

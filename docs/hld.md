@@ -80,7 +80,7 @@ sequenceDiagram
     participant DB as Supabase DB
 
     User->>App: Submits Registration / Login Form
-    App->>Backend: HTTPS API Call (Sign Up / Sign In via `/auth/*`)
+    App->>Backend: HTTPS API Call (Sign Up / Sign In via `/api/auth/*`)
     Backend->>Supabase: Forward Auth Request (GoTrue API)
     Supabase->>Supabase: Validate credentials / pre-seeded list
     Supabase-->>Backend: Returns Session with JWT Access Token
@@ -100,7 +100,7 @@ sequenceDiagram
     App->>User: Render View based on Role
 ```
 
-1.  **Proxied Login/Registration:** Frontend routes auth calls directly to the Spring Boot `/auth` proxy controllers. The backend invokes Supabase GoTrue REST endpoints on behalf of the client and retrieves the JWT session token.
+1.  **Proxied Login/Registration:** Frontend routes auth calls directly to the Spring Boot `/api/auth` proxy controllers. The backend invokes Supabase GoTrue REST endpoints on behalf of the client and retrieves the JWT session token.
 2.  **JWT Cookie Injection & Verification:** Spring Boot sets the token inside an HTTP-only security cookie (`authToken`) on the response. For subsequent requests, the `SupabaseJwtFilter` extracts the JWT from the cookie (or the `Authorization` header), validates the signature symmetrically (using the local secret key) or asymmetrically (using Supabase JWKS endpoints), and sets the security context.
 3.  **Profile Sync:** On first login, Spring Boot checks the local DB and creates a user profile row containing attributes derived from JWT claims.
 

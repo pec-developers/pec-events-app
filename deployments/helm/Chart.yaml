@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pec-events-app
+description: A Helm chart for deploying PEC Events Notification/Management Web App in Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

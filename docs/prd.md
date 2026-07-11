@@ -4,7 +4,7 @@
 
 ### 1.1 User Registration & Profile Synchronization
 *   **Authentication & Self-Registration Portal:** 
-    - **Phase 1 (V1)**: Supabase Auth (GoTrue) coordinates authentication. The React frontend never accesses Supabase directly. Users register or log in via the Spring Boot `/auth` proxy API by providing registration number, email, phone number, and password, which the backend forwards to Supabase on the server side.
+    - **Phase 1 (V1)**: Supabase Auth (GoTrue) coordinates authentication. The React frontend never accesses Supabase directly. Users register or log in via the Spring Boot `/api/auth` proxy API by providing registration number, email, phone number, and password, which the backend forwards to Supabase on the server side.
     - **Phase 2 (V2)**: Keycloak coordinates authentication. Users redirect to Keycloak portals exposed behind the Kong Gateway.
 *   **Self-Registration Verification:** 
     - **Phase 1 (V1)**: Registration number, email, and phone number are validated during registration against a pre-seeded enrollment list. If the registration number is already in use, the user is redirected to the login screen.

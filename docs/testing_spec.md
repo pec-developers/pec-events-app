@@ -93,6 +93,14 @@ flowchart LR
     5.  Enter correct Phone OTP; verify Keycloak completes user creation and redirects back.
 *   **Expected Result:** V2 registration completes only after sequential email and phone OTP verification.
 
+#### TC-AUTH-06: Active Login Role-Based Status Check (V1 & V2)
+*   **Description:** Validate that requesting the role-based auth status endpoint retrieves user profile details and role mapping from the local database.
+*   **Preconditions:** Active user session JWT exists in cookie. User profile exists in local DB with role `STUDENT`.
+*   **Test Steps:**
+    1.  Submit request to `GET /api/auth/me` with valid active session JWT cookie.
+    2.  Verify the response status code and body.
+*   **Expected Result:** Response returns status `200 OK` and a JSON body containing `userId`, `name`, `email`, `role = STUDENT`, `department`, and `registrationNumber`.
+
 ---
 
 ## 3.2 High-Concurrency Slot Control (TC-CONCUR)

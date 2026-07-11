@@ -132,3 +132,4 @@ terraform.rc
 HELP.md
 graphify-out/
 local-s3-data/
+genlab-launchpad/
