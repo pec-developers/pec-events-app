@@ -20,10 +20,10 @@ context: |
       - Phase 1 (V1): Direct user registration and authentication via Supabase Auth (GoTrue). User profiles are synchronized to the local database upon first login. Outgoing password reset / OTP emails are routed via Supabase-configured SMTP providers (e.g. Resend), and SMS/OTP is routed via MSG91 using a custom Deno-based Send SMS Auth Hook.
       - Phase 2 (V2): Sequential dual-channel OTP verification is required during self-registration in Keycloak (IdP) before account creation completes (Email OTP via Resend.com SMTP relay, followed by Phone/SMS OTP via MSG91 custom SPI).
     - Roles:
-      1. Student / Participant: Can browse events, register, submit payment confirmation (UPI screenshot + transaction ID), and receive notifications.
-      2. Student Coordinator: Can publish events, view/manage registrations, and has full authority to verify/approve payments and registrations.
-      3. Faculty Coordinator: Can publish events, view/manage registrations, verify and approve payments/registrations, manage student coordinators, and edit event details.
-      4. System Admin: Manage users, roles, system parameters, global settings, audit logs, and infrastructure monitoring.
+      1. Student & Faculty (Non-coordinators): Can browse and register for published events matching their department scope (or all departments).
+      2. Coordinator (Faculty & Student): Can create event drafts (Students/Coordinators), and Coordinators can create/publish events directly, publish event drafts, and manage registrations.
+      3. Department SPOC: Admin can deploy one SPOC per department (CSE, ECE, EEE, etc.). SPOCs can CRUD coordinators (max 3 constraint of student and faculty coordinators each), CRUD general students and faculty within their department, and moderate department events.
+      4. System Admin: Can CRUD SPOCs (max 1 per department), moderate and CRUD all events in the system, and configure global variables.
   
   Tech Stack & Architecture:
     - Phase 1 (V1):
