@@ -133,7 +133,7 @@ export const EventsBoard: React.FC = () => {
   };
 
   // Roles verification
-  const isEligibleToRegister = user?.role === 'STUDENT' || user?.role === 'STUDENT_COORDINATOR';
+  const isEligibleToRegister = user?.role === 'STUDENT' || user?.role === 'FACULTY' || user?.role === 'STUDENT_COORDINATOR';
   const role = user?.role?.toUpperCase() || '';
   const isCoordinatorGroup = 
     role === 'FACULTY_COORDINATOR' || 
