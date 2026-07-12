@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { useLogin } from '../hooks/useAuth';
-import { Mail, Lock, Loader2, ShieldCheck } from 'lucide-react';
+import { Lock, Loader2, ShieldCheck } from 'lucide-react';
 
 interface AdminLoginProps {
   onSuccess: () => void;
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { handleLogin, isLoading, error } = useLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await handleLogin(email, password, 'admin');
+    const success = await handleLogin('admin@pec.edu', password, 'admin');
     if (success) {
       onSuccess();
     }
@@ -26,7 +25,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
           <ShieldCheck size={32} />
         </div>
         <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 800 }}>Admin Portal</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sign in to manage system SPOCs and moderate events</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Enter the administrator password to access the panel</p>
       </div>
 
       {error && (
@@ -37,25 +36,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label className="form-label" htmlFor="admin-email">Admin Email</label>
-          <div style={{ position: 'relative' }}>
-            <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              id="admin-email"
-              type="email"
-              className="form-input"
-              style={{ paddingLeft: '40px' }}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@pec.edu"
-              required
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="admin-password">Password</label>
+          <label className="form-label" htmlFor="admin-password">Admin Password</label>
           <div style={{ position: 'relative' }}>
             <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
