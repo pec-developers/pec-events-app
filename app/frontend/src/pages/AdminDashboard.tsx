@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useEventStore } from '../stores/eventStore';
 import { 
-  LogOut, Plus, Trash2, Edit2, Landmark, Mail, Lock, 
-  Settings, Sparkles, User, Calendar, DollarSign, Users, RefreshCw
+  LogOut, Plus, Trash2, Edit2, Landmark, 
+  Calendar, Users, RefreshCw
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {

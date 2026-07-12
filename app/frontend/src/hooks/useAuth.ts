@@ -7,7 +7,7 @@ export const useLogin = () => {
   const isLoading = useAuthStore((state) => state.isLoading);
   const [success, setSuccess] = useState(false);
 
-  const handleLogin = async (email: string, password?: string, expectedRoleGroup?: 'student' | 'coordinator') => {
+  const handleLogin = async (email: string, password?: string, expectedRoleGroup?: 'student' | 'faculty' | 'coordinator' | 'spoc' | 'admin') => {
     setSuccess(false);
     try {
       await loginFn({ email, password, expectedRoleGroup });

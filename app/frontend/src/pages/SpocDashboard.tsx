@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { 
   LogOut, Plus, Trash2, Edit2, ShieldAlert, Users, 
-  Mail, Hash, UserPlus, BookOpen, Key, RefreshCw
+  Hash, UserPlus
 } from 'lucide-react';
 
 export const SpocDashboard: React.FC = () => {
