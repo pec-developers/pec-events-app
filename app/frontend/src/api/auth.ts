@@ -1,71 +1,41 @@
-import client from './client';
+import * as mockAuth from './auth.mock';
+import * as realAuth from './auth.real';
 
-export interface RegisterRequest {
-  registrationNumber: string;
-  email: string;
-  phoneNumber?: string;
-  name: string;
-  password?: string;
-}
+// Toggle this flag to easily switch between local frontend-only mock and live backend connectivity.
+// We force USE_MOCK to false during test environments to allow Vitest/MSW to run.
+const USE_MOCK = import.meta.env.MODE !== 'test';
 
-export interface LoginRequest {
-  email: string;
-  password?: string;
-}
+export const registerUser = USE_MOCK ? mockAuth.registerUser : realAuth.registerUser;
+export const loginUser = USE_MOCK ? mockAuth.loginUser : realAuth.loginUser;
+export const logoutUser = USE_MOCK ? mockAuth.logoutUser : realAuth.logoutUser;
+export const forgotPassword = USE_MOCK ? mockAuth.forgotPassword : realAuth.forgotPassword;
+export const resetPassword = USE_MOCK ? mockAuth.resetPassword : realAuth.resetPassword;
+export const getCurrentUser = USE_MOCK ? mockAuth.getCurrentUser : realAuth.getCurrentUser;
 
-export interface ForgotPasswordRequest {
-  identity: string;
-  channel: 'EMAIL' | 'SMS';
-}
+// Admin SPOC CRUD
+export const getSPOCs = USE_MOCK ? mockAuth.getSPOCs : realAuth.getSPOCs;
+export const createSPOC = USE_MOCK ? mockAuth.createSPOC : realAuth.createSPOC;
+export const updateSPOC = USE_MOCK ? mockAuth.updateSPOC : realAuth.updateSPOC;
+export const deleteSPOC = USE_MOCK ? mockAuth.deleteSPOC : realAuth.deleteSPOC;
 
-export interface ResetPasswordRequest {
-  sessionToken: string;
-  otp: string;
-  newPassword?: string;
-}
+// SPOC Coordinator CRUD
+export const getCoordinators = USE_MOCK ? mockAuth.getCoordinators : realAuth.getCoordinators;
+export const createCoordinator = USE_MOCK ? mockAuth.createCoordinator : realAuth.createCoordinator;
+export const updateCoordinator = USE_MOCK ? mockAuth.updateCoordinator : realAuth.updateCoordinator;
+export const deleteCoordinator = USE_MOCK ? mockAuth.deleteCoordinator : realAuth.deleteCoordinator;
 
-export interface AuthResponse {
-  userId: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string | null;
-  registrationNumber: string | null;
-  accessToken?: string;
-}
+// SPOC Student/Faculty CRUD
+export const getDeptUsers = USE_MOCK ? mockAuth.getDeptUsers : realAuth.getDeptUsers;
+export const createDeptUser = USE_MOCK ? mockAuth.createDeptUser : realAuth.createDeptUser;
+export const updateDeptUser = USE_MOCK ? mockAuth.updateDeptUser : realAuth.updateDeptUser;
+export const deleteDeptUser = USE_MOCK ? mockAuth.deleteDeptUser : realAuth.deleteDeptUser;
 
-export interface UserResponse {
-  userId: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string | null;
-  registrationNumber: string | null;
-}
-
-export const registerUser = async (payload: RegisterRequest): Promise<AuthResponse> => {
-  const { data } = await client.post<AuthResponse>('/api/auth/register', payload);
-  return data;
-};
-
-export const loginUser = async (payload: LoginRequest): Promise<AuthResponse> => {
-  const { data } = await client.post<AuthResponse>('/api/auth/login', payload);
-  return data;
-};
-
-export const logoutUser = async (): Promise<void> => {
-  await client.post('/api/auth/logout');
-};
-
-export const forgotPassword = async (payload: ForgotPasswordRequest): Promise<void> => {
-  await client.post('/api/auth/password/forgot', payload);
-};
-
-export const resetPassword = async (payload: ResetPasswordRequest): Promise<void> => {
-  await client.post('/api/auth/password/reset', payload);
-};
-
-export const getCurrentUser = async (): Promise<UserResponse> => {
-  const { data } = await client.get<UserResponse>('/api/auth/me');
-  return data;
-};
+export type {
+  RegisterRequest,
+  LoginRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+  AuthResponse,
+  UserResponse,
+  SPOCResponse
+} from './auth.types';
