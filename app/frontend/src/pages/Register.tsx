@@ -13,16 +13,20 @@ export const Register: React.FC<RegisterProps> = ({ onSuccess, onNavigateToLogin
   const [regNum, setRegNum] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [roleGroup, setRoleGroup] = useState<'student' | 'coordinator'>('student');
+  const [coordinatorType, setCoordinatorType] = useState<'STUDENT_COORDINATOR' | 'FACULTY_COORDINATOR'>('STUDENT_COORDINATOR');
   const { handleRegister, isLoading, error } = useRegister();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedRole = roleGroup === 'student' ? 'STUDENT' : coordinatorType;
     const success = await handleRegister({
       name,
       email,
       registrationNumber: regNum,
       phoneNumber: phone || undefined,
       password,
+      role: selectedRole
     });
     if (success) {
       onSuccess();
@@ -39,13 +43,74 @@ export const Register: React.FC<RegisterProps> = ({ onSuccess, onNavigateToLogin
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Join to register and organize events</p>
       </div>
 
+      {/* Student vs Coordinator Toggle Bar */}
+      <div style={{ 
+        display: 'flex', 
+        background: 'var(--bg-secondary)', 
+        padding: '4px', 
+        borderRadius: 'var(--radius-md)', 
+        border: '1px solid var(--border-color)', 
+        marginBottom: '1.5rem' 
+      }}>
+        <button
+          type="button"
+          onClick={() => setRoleGroup('student')}
+          style={{
+            flex: 1,
+            padding: '0.5rem',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            background: roleGroup === 'student' ? 'var(--accent)' : 'transparent',
+            color: roleGroup === 'student' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Student
+        </button>
+        <button
+          type="button"
+          onClick={() => setRoleGroup('coordinator')}
+          style={{
+            flex: 1,
+            padding: '0.5rem',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            background: roleGroup === 'coordinator' ? 'var(--accent)' : 'transparent',
+            color: roleGroup === 'coordinator' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Coordinator
+        </button>
+      </div>
+
       {error && (
-        <div className="alert alert-danger" role="alert">
+        <div className="alert alert-danger" role="alert" style={{ marginBottom: '1.5rem' }}>
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
+        {roleGroup === 'coordinator' && (
+          <div className="form-group animate-fade-in" style={{ animationDuration: '0.2s' }}>
+            <label className="form-label" htmlFor="coordinator-type-select">Coordinator Type</label>
+            <select
+              id="coordinator-type-select"
+              className="form-input"
+              value={coordinatorType}
+              onChange={(e) => setCoordinatorType(e.target.value as any)}
+              disabled={isLoading}
+              style={{ cursor: 'pointer' }}
+            >
+              <option value="STUDENT_COORDINATOR">Student Coordinator</option>
+              <option value="FACULTY_COORDINATOR">Faculty Coordinator</option>
+            </select>
+          </div>
+        )}
         <div className="form-group">
           <label className="form-label" htmlFor="reg-name-input">Full Name</label>
           <div style={{ position: 'relative' }}>
