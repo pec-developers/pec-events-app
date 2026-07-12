@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { Login } from './pages/Login';
-import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
 import { AdminLogin } from './pages/AdminLogin';
 import { SpocLogin } from './pages/SpocLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -12,7 +12,7 @@ import { LogOut, User, ShieldCheck, Landmark, Hash, Mail, Loader2, Sparkles, Plu
 
 function App() {
   const { user, isAuthenticated, isLoading, checkSession, logout } = useAuthStore();
-  const [currentPage, setCurrentPage] = useState<'login' | 'register'>('login');
+  const [currentPage, setCurrentPage] = useState<'login' | 'forgot-password'>('login');
   const [activeTab, setActiveTab] = useState<'view-events' | 'create-event' | 'profile'>('view-events');
   
   // Custom light state router
@@ -218,13 +218,10 @@ function App() {
       ) : currentPage === 'login' ? (
         <Login
           onSuccess={() => {}}
-          onNavigateToRegister={() => setCurrentPage('register')}
+          onNavigateToForgotPassword={() => setCurrentPage('forgot-password')}
         />
       ) : (
-        <Register
-          onSuccess={() => {
-            setCurrentPage('login');
-          }}
+        <ForgotPassword
           onNavigateToLogin={() => setCurrentPage('login')}
         />
       )}

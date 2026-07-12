@@ -3,10 +3,14 @@ import {
   type UserResponse,
   type LoginRequest,
   type RegisterRequest,
+  type ForgotPasswordRequest,
+  type ResetPasswordRequest,
   loginUser,
   registerUser,
   logoutUser,
   getCurrentUser,
+  forgotPassword,
+  resetPassword,
   getSPOCs,
   createSPOC,
   updateSPOC,
@@ -38,6 +42,8 @@ interface AuthState {
   register: (payload: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   checkSession: () => Promise<void>;
+  forgotPassword: (payload: ForgotPasswordRequest) => Promise<void>;
+  resetPassword: (payload: ResetPasswordRequest) => Promise<void>;
 
   fetchSPOCs: () => Promise<void>;
   createSPOC: (payload: { name: string; email: string; department: string; password?: string }) => Promise<void>;
@@ -140,6 +146,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (err) {
       set({ user: null, isAuthenticated: false, isLoading: false });
+    }
+  },
+
+  forgotPassword: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      await forgotPassword(payload);
+      set({ isLoading: false });
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || 'Failed to request password reset';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  resetPassword: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      await resetPassword(payload);
+      set({ isLoading: false });
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || 'Failed to reset password';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
     }
   },
 

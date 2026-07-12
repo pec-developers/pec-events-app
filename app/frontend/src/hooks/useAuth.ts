@@ -47,3 +47,43 @@ export const useRegister = () => {
 
   return { handleRegister, isLoading, error, success };
 };
+
+export const useForgotPassword = () => {
+  const forgotPasswordFn = useAuthStore((state) => state.forgotPassword);
+  const error = useAuthStore((state) => state.error);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const [success, setSuccess] = useState(false);
+
+  const handleForgotPassword = async (identity: string, channel: 'EMAIL' | 'SMS') => {
+    setSuccess(false);
+    try {
+      await forgotPasswordFn({ identity, channel });
+      setSuccess(true);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  return { handleForgotPassword, isLoading, error, success };
+};
+
+export const useResetPassword = () => {
+  const resetPasswordFn = useAuthStore((state) => state.resetPassword);
+  const error = useAuthStore((state) => state.error);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const [success, setSuccess] = useState(false);
+
+  const handleResetPassword = async (sessionToken: string, otp: string, newPassword?: string) => {
+    setSuccess(false);
+    try {
+      await resetPasswordFn({ sessionToken, otp, newPassword: newPassword || '' });
+      setSuccess(true);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  return { handleResetPassword, isLoading, error, success };
+};

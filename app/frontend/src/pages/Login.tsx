@@ -4,10 +4,10 @@ import { Mail, Lock, Loader2, Sparkles, User, ShieldAlert, BookOpen } from 'luci
 
 interface LoginProps {
   onSuccess: () => void;
-  onNavigateToRegister: () => void;
+  onNavigateToForgotPassword: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onSuccess, onNavigateToRegister }) => {
+export const Login: React.FC<LoginProps> = ({ onSuccess, onNavigateToForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [roleGroup, setRoleGroup] = useState<'student' | 'faculty' | 'coordinator'>('student');
@@ -173,13 +173,12 @@ export const Login: React.FC<LoginProps> = ({ onSuccess, onNavigateToRegister })
       </form>
 
       <div className="text-center mt-4" style={{ fontSize: '0.875rem' }}>
-        <span style={{ color: 'var(--text-secondary)' }}>Don't have an account? </span>
         <button
           type="button"
-          onClick={onNavigateToRegister}
+          onClick={onNavigateToForgotPassword}
           style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
         >
-          Sign Up
+          Forgot Password?
         </button>
       </div>
 
