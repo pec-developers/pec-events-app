@@ -32,9 +32,7 @@ erDiagram
         text description
         uuid creator_id FK
         varchar department
-        numeric price
         integer capacity
-        varchar qr_code_url
         varchar banner_image_url
         varchar poster_image_url
         varchar[] event_photos_urls
@@ -54,16 +52,6 @@ erDiagram
         varchar status
         timestamp created_at
     }
-    payment_audit_logs {
-        uuid id PK
-        uuid registration_id FK
-        varchar transaction_id
-        varchar screenshot_s3_url
-        varchar status
-        uuid verified_by FK
-        timestamp verified_at
-        timestamp created_at
-    }
     push_subscriptions {
         uuid id PK
         uuid user_id FK
@@ -79,21 +67,15 @@ erDiagram
     events ||--o{ event_coordinators : "has collaborator"
     users ||--o{ registrations : "registers"
     events ||--o{ registrations : "has"
-    registrations ||--o| payment_audit_logs : "has audit log"
-    users ||--o{ payment_audit_logs : "verifies"
     users ||--o{ push_subscriptions : "subscribes to push"
 ```
 
 ### 1.1 Integrity Rules
 *   **Users:** User profiles self-registered. Registration number must exist in the `eligible_enrollments` table and cannot be duplicated. User roles (`STUDENT`, `FACULTY`, `ADMIN`) are synced on registration based on the matching enrollment record.
-*   **Coordinators Limits:** Department SPOCs promote/create coordinator roles within their department (min 1, max 4 Faculty Coordinators, and min 1, max 4 Student Coordinators per department).
+*   **Coordinators Limits:** Department SPOCs promote/create coordinator roles within their department (max 3 Faculty Coordinators, and max 3 Student Coordinators per department).
 *   **Registrations:** Status transitions:
-    *   *Free events:* Immediate slot available: `CONFIRMED`. No slot: `WAITING_LIST` -> `CONFIRMED` (upon cancellation dropout promotion).
-    *   *Paid events:* Immediate slot: `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED`. No slot: `WAITING_LIST` -> `PENDING_PAYMENT` (upon cancellation promotion) -> `PENDING_PAYMENT_VERIFICATION` -> `CONFIRMED` or `REJECTED` (or `PAYMENT_REJECTED` if re-upload allowed).
-    *   *Refund Processing:* Cancellations of paid registrations (status `PENDING_PAYMENT_VERIFICATION` or `CONFIRMED`) register a refund request to be processed within 24 hours.
-    *   *24-Hour Expiry:* Promoted waiting list registrations in `PENDING_PAYMENT` status automatically transition to `EXPIRED` if payment details are not submitted within 24 hours.
-    *   *12-Hour Re-upload Expiry:* Registrations transitioned to `PAYMENT_REJECTED` automatically transition to `EXPIRED` if valid payment details are not re-submitted within 12 hours from rejection.
-*   **Capacity Constraint:** Active reservation slots count (registrations in `CONFIRMED` or `PENDING_PAYMENT_VERIFICATION` state) must not exceed the event `capacity`.
+    *   *Free events (All events):* Immediate slot available: `CONFIRMED`. No slot: `WAITING_LIST` -> `CONFIRMED` (upon cancellation dropout promotion).
+*   **Capacity Constraint:** Active reservation slots count (registrations in the `CONFIRMED` state) must not exceed the event `capacity`.
 
 ---
 
@@ -126,9 +108,6 @@ public RegistrationResponse registerForEvent(UUID eventId, UUID studentId) {
     if (activeReservations < event.getCapacity()) {
         if (event.getPrice().compareTo(BigDecimal.ZERO) == 0) {
             registration.setStatus(RegistrationStatus.CONFIRMED);
-        } else {
-            registration.setStatus(RegistrationStatus.PENDING_PAYMENT_VERIFICATION);
-        }
     } else {
         registration.setStatus(RegistrationStatus.WAITING_LIST);
     }
@@ -152,17 +131,9 @@ public void cancelRegistration(UUID registrationId, UUID requestingUserId) {
     Event event = eventRepository.findByIdForUpdate(eventId)
         .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-    // 2. Cancel the registration and trigger refund if paid and student has submitted payment
-    boolean isPaidEvent = event.getPrice().compareTo(BigDecimal.ZERO) > 0;
-    boolean hasPaid = registration.getStatus() == RegistrationStatus.PENDING_PAYMENT_VERIFICATION 
-        || registration.getStatus() == RegistrationStatus.CONFIRMED;
-
+    // 2. Cancel the registration
     registration.setStatus(RegistrationStatus.CANCELLED);
     registrationRepository.save(registration);
-
-    if (isPaidEvent && hasPaid) {
-        refundService.triggerRefund(registrationId, 24); // Process refund within 24 hours
-    }
 
     // 3. Look for the oldest WAITING_LIST student
     Optional<Registration> oldestWaiting = registrationRepository
@@ -170,13 +141,8 @@ public void cancelRegistration(UUID registrationId, UUID requestingUserId) {
 
     if (oldestWaiting.isPresent()) {
         Registration waiting = oldestWaiting.get();
-        if (event.getPrice().compareTo(BigDecimal.ZERO) == 0) {
-            waiting.setStatus(RegistrationStatus.CONFIRMED);
-            // Trigger Service Worker push alert for confirmation
-        } else {
-            waiting.setStatus(RegistrationStatus.PENDING_PAYMENT);
-            // Trigger Service Worker push alert prompting payment upload (enables pay option only for them)
-        }
+        waiting.setStatus(RegistrationStatus.CONFIRMED);
+        // Trigger Service Worker push alert for confirmation
         registrationRepository.save(waiting);
     }
 }
@@ -372,14 +338,10 @@ frontend/src/
     }
     ```
 
-### 4.3 Register for Event (Free or Paid)
+### 4.3 Register for Event
 *   **Path:** `POST /api/events/{eventId}/register`
 *   **Headers:** `Authorization: Bearer <jwt-token>`
-*   **Content-Type:** `multipart/form-data` (only required when slot is available and event is paid)
-*   **Request Parts (Optional, for Paid Events when slots are available):**
-    *   `transactionId` (text): `123456789012`
-    *   `screenshot` (file): Binary image file (JPEG/PNG, max 5MB)
-*   **Response JSON (201 Created - Slot Available, Free Event):**
+*   **Response JSON (201 Created - Slot Available):**
     ```json
     {
       "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
@@ -393,31 +355,8 @@ frontend/src/
       "status": "WAITING_LIST"
     }
     ```
-*   **Response JSON (201 Created - Slot Available, Paid Event):**
-    ```json
-    {
-      "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
-      "status": "PENDING_PAYMENT_VERIFICATION"
-    }
-    ```
 
-### 4.4 Submit Payment Details (For initial booking or waiting list promotions)
-*   **Path:** `POST /api/registrations/{registrationId}/submit-payment`
-*   **Headers:** `Authorization: Bearer <jwt-token>`
-*   **Content-Type:** `multipart/form-data`
-*   **Request Parts:**
-    *   `transactionId` (text): `123456789012`
-    *   `screenshot` (file): Binary image file (JPEG/PNG, max 5MB)
-*   **Response JSON (202 Accepted):**
-    ```json
-    {
-      "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
-      "status": "PENDING_PAYMENT_VERIFICATION",
-      "screenshotUrl": "https://pec-events-screenshots.s3.amazonaws.com/r9a8c7b6.png"
-    }
-    ```
-
-### 4.5 Cancel Registration / Dropout
+### 4.4 Cancel Registration / Dropout
 *   **Path:** `POST /api/registrations/{registrationId}/cancel`
 *   **Headers:** `Authorization: Bearer <jwt-token>`
 *   **Response JSON (200 OK):**
@@ -425,35 +364,7 @@ frontend/src/
     {
       "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
       "status": "CANCELLED",
-      "refundInitiated": true,
-      "message": "Registration cancelled. Refund scheduled within 24 hours. Queue processed."
-    }
-    ```
-
-### 4.6 Verify Payment (Coordinators)
-*   **Path:** `POST /api/registrations/{registrationId}/verify`
-*   **Headers:** `Authorization: Bearer <jwt-token>`
-*   **Request JSON:**
-    ```json
-    {
-      "approved": true,
-      "rejectionReason": ""
-    }
-    ```
-*   **Response JSON (200 OK - Approved):**
-    ```json
-    {
-      "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
-      "status": "CONFIRMED",
-      "message": "Payment verified successfully. Registration is confirmed."
-    }
-    ```
-*   **Response JSON (200 OK - Rejected for Re-upload):**
-    ```json
-    {
-      "registrationId": "r9a8c7b6-54de-4f32-ba98-76543210fedc",
-      "status": "PAYMENT_REJECTED",
-      "message": "Payment details rejected: Invalid transaction reference. Student has 12 hours to re-upload details."
+      "message": "Registration cancelled successfully. FCFS queue processed."
     }
     ```
 

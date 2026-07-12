@@ -23,47 +23,33 @@
 *   **Discovery Board:** Authenticated students and faculty can browse and view active/upcoming events.
 *   **Metadata Display:** Events display title, banner image, date, description, coordinator details, price, remaining seats, and registration deadline.
 
-### 1.3 Event Creation (Coordinators)
-*   **Event Creation & Publishing Interface:** Both Student and Faculty Coordinators can create events (saved as drafts). However, to prevent miscommunication and ensure safety, only Faculty Coordinators and department SPOCs have the authority to publish events.
-*   **Collaborative Management:** When creating an event, the creator (Student or Faculty Coordinator) is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event. Student Coordinators do NOT have permissions to manage (add or remove) collaborators on the event.
+### 1.3 Event Creation (Draft & Publishing)
+*   **Event Creation & Publishing Interface:** General Students can create events (saved as drafts). Coordinators (Faculty & Student) can create & publish events directly, and publish event drafts created by students.
+*   **Collaborative Management:** When creating an event, the creator is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event.
 *   **Event Modification:** Any coordinator assigned to an event has full modification permissions to edit details, manage registrations, and verify payments.
 *   **Parameters:** Configurable capacity limits, price, active flags, UPI payment details, and event assets (banners, posters, event photos).
 *   **Overbooking Control:** Enforce strict capacity caps using Postgres row-level locks when seat allocations or registrations occur.
 
-### 1.4 Ticket Booking & Payment Submission (V1)
-*   **Eligibility Boundary:** Only student roles (`STUDENT` and `STUDENT_COORDINATOR`) are eligible to register and participate in events. Faculty roles (`FACULTY`, `FACULTY_COORDINATOR`, and `SPOC`) can browse and view events but are blocked from registering/participating.
-*   **Capacity Checks:** The system counts active reservations as registrations in `CONFIRMED` or `PENDING_PAYMENT_VERIFICATION` states. If this count is equal to or greater than the event's capacity, new registrations are placed in the `WAITING_LIST` state.
-*   **Free Events:**
-
+#### 1.4 Ticket Booking & Registration (V1)
+*   **Eligibility Boundary:** Student and Faculty (non-coordinators) and Student Coordinators are eligible to register and participate in events. Faculty Coordinators, SPOCs, and Admins are blocked from registering/participating.
+*   **Capacity Checks:** The system counts active reservations as registrations in the `CONFIRMED` state. If this count is equal to or greater than the event's capacity, new registrations are placed in the `WAITING_LIST` state.
+*   **Free Registrations (All events are free for the current scope):**
     *   *Slots Available:* Immediate registration. Status is set to `CONFIRMED`.
     *   *Slots Full:* Registration is placed in `WAITING_LIST`.
-*   **Paid Events:**
-    *   *Slots Available:* Clicking register opens a modal showing a static UPI QR code. The student must scan/pay external to the app, input the 12-digit UPI Reference Transaction ID, and upload the payment screenshot. Upon submission, they are placed in `PENDING_PAYMENT_VERIFICATION` status.
-    *   *Slots Full:* The pay option is disabled. Clicking register places the student on the `WAITING_LIST` immediately. No payment details or screenshots are collected upfront.
-*   **Refund Policy for Cancellations:** If a student cancels their registration after paying (when the status is `PENDING_PAYMENT_VERIFICATION` or `CONFIRMED`), they can select "Cancel Registration", and their paid amount will be refunded within 24 hours.
-*   **Image & Asset Storage:** The system utilizes AWS S3 for storage. The frontend sends user profile images, event assets (banners, posters, event photos), and payment confirmation screenshots to the Spring Boot backend, which uploads them to AWS S3 and stores their URLs in the database.
 
-### 1.5 Verification Dashboard
-*   **Review Queue:** Assigned coordinators see registrations filtered by status (`PENDING_PAYMENT_VERIFICATION`, `CONFIRMED`, `REJECTED`, `PENDING_PAYMENT`, `WAITING_LIST`).
-*   **Validation Modal:** Clicking a registration in `PENDING_PAYMENT_VERIFICATION` opens a modal showing the student details, transaction ID, and the uploaded S3 payment screenshot.
-*   **Actions:**
-    *   **Approve:** Updates status to `CONFIRMED`, and pushes a confirmation notification to the student.
-    *   **Reject:** Updates status to `REJECTED`, prompts for a reason, and pushes a rejection notification to the student.
+### 1.5 [Omitted / Ignored for V1] Verification Dashboard
+*   All events are free; manual verification of UPI references or payments is not required.
 
 ### 1.6 Web Push Notifications (PWA)
 *   **Subscription Opt-in:** Prompt the user to grant push permission. If granted, register a service worker subscription with a public VAPID key and send it to the backend.
 *   **Status Alerts:** Push OS-level notifications immediately when:
     *   A coordinator publishes a new event.
-    *   A registration status updates to `CONFIRMED`, `REJECTED`, or `PENDING_PAYMENT`.
+    *   A registration status updates to `CONFIRMED` or is promoted from `WAITING_LIST`.
 
 ### 1.7 FCFS Waiting List & Dropout Flow (V1)
-*   **Dropout Cancellation:** When a student cancels their registration (or a coordinator cancels it), if they have already paid (status was `PENDING_PAYMENT_VERIFICATION` or `CONFIRMED`), a refund is triggered to be processed within 24 hours. If the event has a waiting list (one or more registrations in `WAITING_LIST` state), the oldest `WAITING_LIST` registration (based on `created_at` ASC) is automatically promoted:
-    *   *Free Event:* Promoted registration status changes to `CONFIRMED`. Send success push notification.
-    *   *Paid Event:* Promoted registration status changes to `PENDING_PAYMENT`. Send push notification requesting payment.
+*   **Dropout Cancellation:** When a student cancels their registration, if the event has a waiting list (one or more registrations in the `WAITING_LIST` state), the oldest `WAITING_LIST` registration (based on `created_at` ASC) is automatically promoted:
+    *   *Promotion:* Promoted registration status changes to `CONFIRMED`.
     *   *No Waiting List:* Available slots are incremented by 1.
-*   **Promoted Payment Submission & Expiry:** A student whose registration transitions to `PENDING_PAYMENT` is prompted to pay (the pay option becomes active exclusively for them, while remaining disabled for all other waiting list users). They scan the UPI QR code, pay, and upload their transaction ID and payment screenshot. This transitions their registration status to `PENDING_PAYMENT_VERIFICATION` for coordinator approval.
-    *   *24-Hour Expiry Window:* The promoted student has exactly **24 hours** from the promotion timestamp to submit their transaction details and screenshot. If they do not upload payment details within 24 hours, their registration status is updated to `EXPIRED` (or cancelled) and the backend automatically triggers the promotion of the next FCFS waiting list student.
-    *   *Payment Rejection & Re-upload Grace Period:* If a coordinator rejects a student's uploaded payment details, the registration status transitions to `PAYMENT_REJECTED` and a push notification is sent to the student. The student is granted a **12-hour grace period** from the rejection timestamp to re-upload valid payment details. If they fail to re-submit details within 12 hours, the registration is updated to `EXPIRED` and the backend automatically promotes the next student in the FCFS waiting list queue.
 
 ## 2. Core User Flows
 
@@ -71,41 +57,20 @@
 ```mermaid
 flowchart TD
     A([Browse Event]) --> B[Click Register]
-    B --> C{Active Reservations < Capacity?}
+    B --> C{Active Registrations < Capacity?}
     
-    C -- Yes --> D{Is Event Paid?}
-    D -- No --> E["Status: CONFIRMED<br/>Push Notification"]
-    D -- Yes --> F[Display UPI QR Code]
-    F --> G[Upload Screenshot & Input Txn ID]
-    G --> H[Submit Registration]
-    H --> I[Status: PENDING_PAYMENT_VERIFICATION]
-    I --> J[Coordinator reviews Queue]
-    J --> K{Approve or Reject?}
-    K -- Approve --> L["Status: CONFIRMED<br/>Push Notification"]
-    K -- Reject --> M["Status: REJECTED<br/>Push Notification with Reason"]
-
-    C -- No --> N["Status: WAITING_LIST<br/>(No payment collected)"]
+    C -- Yes --> D["Status: CONFIRMED<br/>Registration Confirmed"]
+    C -- No --> E["Status: WAITING_LIST<br/>Placed on Waiting List"]
 ```
 
 ### 2.2 Student Dropout & Promotion Flow
 ```mermaid
 flowchart TD
-    A([Student Cancels / Drops Out]) --> CheckPaid{Had Student Paid?}
-    CheckPaid -- Yes --> TriggerRefund[Trigger Refund within 24h]
-    CheckPaid -- No --> B{Is there a Waiting List?}
-    TriggerRefund --> B
+    A([Student Cancels Registration]) --> B{Is there a Waiting List?}
     
-    B -- No --> C[Increment Available Slots]
+    B -- No --> C[Available slots incremented]
     B -- Yes --> D[Retrieve Oldest WAITING_LIST Student FCFS]
-    D --> E{Is Event Paid?}
-    E -- No --> F["Promote to CONFIRMED<br/>Push Notification"]
-    E -- Yes --> G["Promote to PENDING_PAYMENT<br/>(Enable Pay Option)<br/>Push Notification to Pay"]
-    G --> H[Student uploads Screenshot & Txn ID]
-    H --> I[Status: PENDING_PAYMENT_VERIFICATION]
-    I --> J[Coordinator reviews Queue]
-    J --> K{Approve or Reject?}
-    K -- Approve --> L["Status: CONFIRMED<br/>Push Notification"]
-    K -- Reject --> M["Status: REJECTED<br/>Push Notification with Reason"]
+    D --> E["Promote to CONFIRMED<br/>Notify Student"]
 ```
 
 ## 3. Product Constraints & System Parameters
