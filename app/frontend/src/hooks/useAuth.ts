@@ -7,10 +7,10 @@ export const useLogin = () => {
   const isLoading = useAuthStore((state) => state.isLoading);
   const [success, setSuccess] = useState(false);
 
-  const handleLogin = async (email: string, password?: string) => {
+  const handleLogin = async (email: string, password?: string, expectedRoleGroup?: 'student' | 'coordinator') => {
     setSuccess(false);
     try {
-      await loginFn({ email, password });
+      await loginFn({ email, password, expectedRoleGroup });
       setSuccess(true);
       return true;
     } catch (err) {
@@ -33,6 +33,7 @@ export const useRegister = () => {
     phoneNumber?: string;
     name: string;
     password?: string;
+    role?: string;
   }) => {
     setSuccess(false);
     try {
