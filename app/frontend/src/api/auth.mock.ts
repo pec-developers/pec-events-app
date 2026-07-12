@@ -100,7 +100,92 @@ const initializeMockUsers = (): MockUserEntry[] => {
 const getMockUsers = (): MockUserEntry[] => {
   try {
     const data = localStorage.getItem('pec_mock_users');
-    return data ? JSON.parse(data) : initializeMockUsers();
+    let users = data ? JSON.parse(data) : [];
+    
+    const defaultUsers = [
+      {
+        userId: 'usr_admin_001',
+        name: 'System Admin',
+        email: 'admin@pec.edu',
+        role: 'ADMIN',
+        department: null,
+        registrationNumber: null,
+        password: 'admin123'
+      },
+      {
+        userId: 'usr_spoc_cse',
+        name: 'CSE Department SPOC',
+        email: 'cse_spoc@pec.edu',
+        role: 'SPOC',
+        department: 'CSE',
+        registrationNumber: null,
+        password: 'password123'
+      },
+      {
+        userId: 'usr_spoc_ece',
+        name: 'ECE Department SPOC',
+        email: 'ece_spoc@pec.edu',
+        role: 'SPOC',
+        department: 'ECE',
+        registrationNumber: null,
+        password: 'password123'
+      },
+      {
+        userId: 'usr_student_123',
+        name: 'Student Test',
+        email: 'student@pec.edu',
+        role: 'STUDENT',
+        department: 'CSE',
+        registrationNumber: 'PEC-100234',
+        password: 'password123'
+      },
+      {
+        userId: 'usr_faculty_888',
+        name: 'Faculty Test',
+        email: 'faculty@pec.edu',
+        role: 'FACULTY',
+        department: 'CSE',
+        registrationNumber: 'PEC-900888',
+        password: 'password123'
+      },
+      {
+        userId: 'usr_coord_456',
+        name: 'Faculty Coordinator Test',
+        email: 'coordinator@pec.edu',
+        role: 'FACULTY_COORDINATOR',
+        department: 'CSE',
+        registrationNumber: 'PEC-100001',
+        password: 'password123'
+      },
+      {
+        userId: 'usr_student_coord_789',
+        name: 'Student Coordinator Test',
+        email: 'student_coord@pec.edu',
+        role: 'STUDENT_COORDINATOR',
+        department: 'CSE',
+        registrationNumber: 'PEC-100002',
+        password: 'password123'
+      }
+    ];
+
+    if (users.length === 0) {
+      localStorage.setItem('pec_mock_users', JSON.stringify(defaultUsers));
+      return defaultUsers;
+    }
+
+    let hasChanges = false;
+    defaultUsers.forEach(defaultUser => {
+      const exists = users.some((u: any) => u.email.toLowerCase() === defaultUser.email.toLowerCase());
+      if (!exists) {
+        users.push(defaultUser);
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      localStorage.setItem('pec_mock_users', JSON.stringify(users));
+    }
+    return users;
   } catch (e) {
     return initializeMockUsers();
   }
