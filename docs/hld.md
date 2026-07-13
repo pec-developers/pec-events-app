@@ -6,22 +6,21 @@ The application utilizes a decoupled client-server architecture. To support a ph
 
 ### 1.1 Version 1 Lightweight Architecture (Current Scope)
 
-In Version 1, the infrastructure architecture is simplified to reduce complexity, while the underlying code writing styles are fully structured. The React SPA (built on a strict **3-Tier Architecture**) communicates directly with the Spring Boot backend (organized via a decoupled **Ports & Adapters** architecture). Authentication is delegated to Supabase Auth, while user profile data and relations are stored in Supabase PostgreSQL. User profile images, event assets (posters, banners, event photos), and payment transaction screenshots are uploaded directly from Spring Boot to AWS S3.
+In Version 1, the infrastructure architecture is simplified to reduce complexity, while the underlying code writing styles are fully structured. The React SPA (built on a strict **3-Tier Architecture** using React Router v7 for nested role layouts) communicates directly with the Spring Boot backend (organized via a decoupled **Ports & Adapters** architecture). Authentication handles credentials matching (email for Admin, registration number for all other roles). User profiles and departments are stored in the PostgreSQL database. The backend validates dynamic per-department limits against the `system_configurations` table, blocked by PostgreSQL trigger checks. User profile images, event assets (posters, banners, event photos), and payment transaction screenshots are uploaded directly from Spring Boot to AWS S3.
 
 ```mermaid
 graph TD
     User([User Device]) -->|"Access SPA"| Frontend[React SPA Frontend]
     Frontend -->|"1. HTTPS API & Auth Requests"| SpringBoot[Spring Boot Backend]
-    SpringBoot -->|"2. Proxy Auth Calls (GoTrue)"| SupabaseAuth[Supabase Auth GoTrue]
-    SupabaseAuth -->|"3. Return Auth Session/JWT"| SpringBoot
-    SpringBoot -->|"4. Return Response & Auth Cookie"| Frontend
-    SpringBoot -->|"5. Store/Query Event & Profile Data"| SupabaseDB[(Supabase PostgreSQL)]
-    SpringBoot -->|"6. Upload profile, event, & payment images"| S3[(AWS S3 Bucket)]
-    SpringBoot -->|"7. Send Web Push Notifications"| User
+    SpringBoot -->|"2. Validate Login (Email/RegNum)"| AuthLogic[Authentication Handler]
+    SpringBoot -->|"3. Store/Query Event & Profile Data"| SupabaseDB[(PostgreSQL Database)]
+    SpringBoot -->|"4. CRUD Departments & Config Limits"| SupabaseDB
+    SpringBoot -->|"5. Upload profile, event, & payment images"| S3[(AWS S3 Bucket)]
+    SpringBoot -->|"6. Send Web Push Notifications"| User
 ```
 
 #### V1 Infrastructure Components:
-*   **Hosting:** Frontend assets (compiled React package) are hosted in a basic static file hosting service (e.g. AWS S3 + CloudFront).
+*   **Hosting:** Frontend assets (compiled React package with React Router routes) are hosted in a static file hosting service.
 *   **Backend Server:** The Spring Boot backend runs on a standard virtual server (e.g. AWS EC2, Elastic Beanstalk, or a simple container runner).
 *   **Identity & Database:** Supabase Cloud hosts both the GoTrue Authentication provider and the PostgreSQL Database.
 *   **Object Storage:** A dedicated AWS S3 bucket stores user profile images, event assets (banners, posters, event photos), and UPI verification screenshots.

@@ -6,7 +6,11 @@ import {
   Loader2, Sparkles, Inbox, Edit3, Save, X, Globe, Landmark, BadgeAlert
 } from 'lucide-react';
 
-export const EventsBoard: React.FC = () => {
+interface EventsBoardProps {
+  onViewRegistrations?: (eventId: string, eventTitle: string) => void;
+}
+
+export const EventsBoard: React.FC<EventsBoardProps> = ({ onViewRegistrations }) => {
   const { user } = useAuthStore();
   const {
     events,
@@ -380,6 +384,16 @@ export const EventsBoard: React.FC = () => {
                           style={{ width: '100%', padding: '0.5rem 0.75rem', backgroundColor: '#f59e0b', borderColor: '#f59e0b', color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}
                         >
                           Publish Draft Event
+                        </button>
+                      )}
+
+                      {isCoordinatorGroup && event.status === 'PUBLISHED' && onViewRegistrations && (
+                        <button
+                          onClick={() => onViewRegistrations(event.id, event.title)}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '0.25rem' }}
+                        >
+                          View Registrations & Export
                         </button>
                       )}
 

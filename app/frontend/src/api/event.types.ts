@@ -42,3 +42,15 @@ export interface RegistrationResponse {
   createdAt: string;
   eventTitle: string;
 }
+
+export interface RegistrationDetailResponse {
+  id: string;
+  eventId: string;
+  studentId: string;
+  status: 'CONFIRMED' | 'WAITING_LIST';
+  createdAt: string;
+  studentName: string;
+  studentEmail: string;
+  studentRegNum: string;
+  studentDept: string;
+}

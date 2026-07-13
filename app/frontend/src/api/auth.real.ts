@@ -5,7 +5,10 @@ import type {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   AuthResponse,
-  UserResponse
+  UserResponse,
+  Department,
+  SystemConfiguration,
+  ProfileUpdateRequest
 } from './auth.types';
 
 export const registerUser = async (payload: RegisterRequest): Promise<AuthResponse> => {
@@ -93,4 +96,40 @@ export const updateDeptUser = async (userId: string, payload: { name: string; em
 
 export const deleteDeptUser = async (userId: string): Promise<void> => {
   await client.delete(`/api/spoc/users/${userId}`);
+};
+
+// Department management endpoints (Admin)
+export const getDepartments = async (): Promise<Department[]> => {
+  const { data } = await client.get<Department[]>('/api/admin/departments');
+  return data;
+};
+
+export const createDepartment = async (payload: Department): Promise<Department> => {
+  const { data } = await client.post<Department>('/api/admin/departments', payload);
+  return data;
+};
+
+export const updateDepartment = async (code: String, payload: Department): Promise<Department> => {
+  const { data } = await client.put<Department>(`/api/admin/departments/${code}`, payload);
+  return data;
+};
+
+export const deleteDepartment = async (code: String): Promise<void> => {
+  await client.delete(`/api/admin/departments/${code}`);
+};
+
+// Configurations endpoints (Admin)
+export const getSystemConfigs = async (): Promise<SystemConfiguration[]> => {
+  const { data } = await client.get<SystemConfiguration[]>('/api/admin/config');
+  return data;
+};
+
+export const updateSystemConfig = async (key: string, value: number): Promise<void> => {
+  await client.put(`/api/admin/config/${key}`, { value });
+};
+
+// Profile update endpoint (Everyone)
+export const updateUserProfile = async (payload: ProfileUpdateRequest): Promise<UserResponse> => {
+  const { data } = await client.put<UserResponse>('/api/profile', payload);
+  return data;
 };

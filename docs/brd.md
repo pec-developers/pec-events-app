@@ -10,16 +10,20 @@ Prathyusha Engineering College (PEC) requires a Progressive Web App (PWA) to ser
 *   **Real-time Alerts:** Notify students of new events or registration status updates via PWA push notifications.
 
 ## 3. User Roles & Access Control Policy
-The application supports six distinct user roles with hierarchical authority. Students and Faculty self-register by providing their registration number, email, and phone number, which is matched against a pre-loaded enrollment database.
+The application supports five distinct user roles with hierarchical authority. Authentication is role-specific using registration numbers or email:
+- **Admin**: Logs in using **Email** and password.
+- **SPOC & Faculty Coordinator**: Logs in using **Faculty Registration Number** and password.
+- **Student & Student Coordinator**: Logs in using **Student Registration Number** and password.
 
-| Role | Description / Permissions |
-| :--- | :--- |
-| **Student / Participant** | - Registers by matching registration number against the enrollment database.<br>- Browse events, view schedules, and register.<br>- Joins the First-Come, First-Served (FCFS) Waiting List if the event is at full capacity.<br>- For paid events, submits UPI transaction details within 24 hours of promotion.<br>- Receives push notifications. |
-| **Faculty (Non-Coordinator)** | - Registers by matching registration number against the enrollment database.<br>- Browse all events and view schedules.<br>- No registration option.<br>- Receives push notifications for new events. |
-| **Student Coordinator** | - Promoted from Student by the department SPOC.<br>- Create events (saved as draft, must be published by a Faculty Coordinator, SPOC or Admin).<br>- Assigned as event collaborator by Faculty Coordinators or SPOC.<br>- Modify event details and manage registrations *only* for assigned events.<br>- Cannot manage (add/remove) other event collaborators. |
-| **Faculty Coordinator** | - Promoted from Faculty by the department SPOC.<br>- Create and publish department events.<br>- Assigned as event collaborator; can modify details, manage registrations, and manage (add/remove) other collaborators on assigned events. |
-| **SPOC (Single Point of Contact)** | - Created and marked by the System Admin (one SPOC per academic department).<br>- Promote/demote department Faculty and Students to Coordinator status (max 3 each for Faculty and Student Coordinators).<br>- Manage (add/remove) collaborators on any active department event.<br>- View audit logs and active events within their department. |
-| **System Admin** | - Uploads pre-seeded enrollment lists (CSV) of valid registration numbers.<br>- Manages user accounts and configurations (via Supabase Auth dashboard in V1, and Keycloak realm in V2).<br>- Assigns and configures the department SPOC users.<br>- Configures system routing, rate-limits, and infrastructure monitoring (via Spring Boot configs in V1, and Kong API Gateway routes in V2). |
+The maximum limits of coordinators permitted per department (initially 1 SPOC, 3 Faculty Coordinators, and 3 Student Coordinators) are stored in the database and dynamically configurable by the Admin.
+
+| Role | Login Identifier | Description / Permissions / Constraints |
+| :--- | :--- | :--- |
+| **Student / Participant** | Student Reg Num | - Browse events, view schedules, and register.<br>- Joins the FCFS Waiting List if the event is at full capacity.<br>- Submits/updates UPI transaction screenshots for paid registrations.<br>- View all their past registrations.<br>- Edit profile details (name, email, phone number, profile image) only; theme switching. |
+| **Student Coordinator** | Student Reg Num | - Read all events.<br>- Create, read, update, and delete **only draft events** within their department. Cannot modify active/published events.<br>- Read, update, and delete registrations for their department.<br>- Export registration details to CSV with custom-selected fields.<br>- Can also perform all standard Student actions. |
+| **Faculty Coordinator** | Faculty Reg Num | - CRUD all events (draft and active).<br>- Read, update, and delete event registrations.<br>- Export registration details to CSV with custom-selected fields. |
+| **SPOC (Single Point of Contact)** | Faculty Reg Num | - CRUD student coordinators' and faculty coordinators' profiles (subject to Admin-configured department limits).<br>- Seed student profiles in the enrollment database.<br>- Read all events; can delete events of their department. |
+| **System Admin** | Email | - CRUD all users (specifically SPOC account setup and management flows).<br>- CRUD academic departments.<br>- CRUD system configuration limits per department dynamically.<br>- Read, update, and delete any event in the system (explicitly **blocked** from accessing participant registration details/lists). |
 
 ## 4. Phase Boundaries (V1 vs. V2)
 
