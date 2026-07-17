@@ -6,9 +6,6 @@ import babel from '@rolldown/plugin-babel'
 export default defineConfig({
   plugins: [
     react(),
-    babel({ presets: [reactCompilerPreset()] }),
+    babel({ presets: [reactCompilerPreset()] })
   ],
-  server: {
-    port: 3000
-  }
 })
