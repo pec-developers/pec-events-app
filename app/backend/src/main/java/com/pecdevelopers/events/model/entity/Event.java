@@ -2,6 +2,8 @@ package com.pecdevelopers.events.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,10 +50,17 @@ public class Event {
     @Column(name = "poster_image_url")
     private String posterImageUrl;
 
-    @ElementCollection
-    @CollectionTable(name = "event_photos", joinColumns = @JoinColumn(name = "event_id"))
-    @Column(name = "photo_url")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "event_photos_urls")
     private List<String> eventPhotosUrls;
+
+    @Column(length = 20)
+    @Builder.Default
+    private String status = "DRAFT";
+
+    @Column(name = "department_scope", length = 20)
+    @Builder.Default
+    private String departmentScope = "ALL_DEPTS";
 
     @Builder.Default
     private Boolean active = true;

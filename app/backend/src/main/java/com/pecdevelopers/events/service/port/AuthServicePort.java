@@ -9,4 +9,10 @@ public interface AuthServicePort {
     void forgotPassword(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
     UserResponse getActiveUser(UUID userId);
+    UserResponse updateProfile(UUID userId, ProfileUpdateRequest request);
+    java.util.List<UserResponse> listUsersByRole(String role);
+    java.util.List<UserResponse> listCoordinatorsByDepartment(String department);
+    UserResponse createSpoc(RegisterRequest request, String department);
+    UserResponse createCoordinator(RegisterRequest request, String role, String department);
+    void deleteUser(UUID userId);
 }

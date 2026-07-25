@@ -51,3 +51,23 @@ export interface SPOCResponse {
   role: 'SPOC';
   department: string;
 }
+
+export interface Department {
+  code: string;
+  name: string;
+  createdAt?: string;
+}
+
+export interface SystemConfiguration {
+  key: string;
+  value: number;
+  description?: string;
+  updatedAt?: string;
+}
+
+export interface ProfileUpdateRequest {
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  profileImageUrl?: string;
+}

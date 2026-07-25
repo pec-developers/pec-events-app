@@ -31,34 +31,4 @@ describe('useAuth custom hooks and stores integration', () => {
     });
     expect(mockRegister).toHaveBeenCalled();
   });
-
-  it('should trigger store forgotPassword action successfully', async () => {
-    const mockForgotPassword = vi.fn().mockResolvedValue(undefined);
-    useAuthStore.setState({ forgotPassword: mockForgotPassword });
-
-    await useAuthStore.getState().forgotPassword({
-      identity: 'student@pec.edu',
-      channel: 'EMAIL',
-    });
-    expect(mockForgotPassword).toHaveBeenCalledWith({
-      identity: 'student@pec.edu',
-      channel: 'EMAIL',
-    });
-  });
-
-  it('should trigger store resetPassword action successfully', async () => {
-    const mockResetPassword = vi.fn().mockResolvedValue(undefined);
-    useAuthStore.setState({ resetPassword: mockResetPassword });
-
-    await useAuthStore.getState().resetPassword({
-      sessionToken: 'student@pec.edu',
-      otp: '123456',
-      newPassword: 'new-password',
-    });
-    expect(mockResetPassword).toHaveBeenCalledWith({
-      sessionToken: 'student@pec.edu',
-      otp: '123456',
-      newPassword: 'new-password',
-    });
-  });
 });

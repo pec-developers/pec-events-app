@@ -1,119 +1,37 @@
 import React, { useState } from 'react';
 import { useLogin } from '../hooks/useAuth';
-import { Mail, Lock, Loader2, Sparkles, User, ShieldAlert, BookOpen } from 'lucide-react';
+import { Mail, Lock, Loader2, Sparkles } from 'lucide-react';
 
 interface LoginProps {
   onSuccess: () => void;
-  onNavigateToForgotPassword: () => void;
+  onNavigateToRegister: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onSuccess, onNavigateToForgotPassword }) => {
+export const Login: React.FC<LoginProps> = ({ onSuccess, onNavigateToRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [roleGroup, setRoleGroup] = useState<'student' | 'faculty' | 'coordinator'>('student');
   const { handleLogin, isLoading, error } = useLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await handleLogin(email, password, roleGroup);
+    const success = await handleLogin(email, password);
     if (success) {
       onSuccess();
     }
   };
 
   return (
-    <div className="form-card animate-fade-in" style={{ marginTop: '3rem', marginBottom: '3rem', maxWidth: '420px', width: '100%' }}>
+    <div className="form-card animate-fade-in" style={{ marginTop: '4rem', marginBottom: '4rem' }}>
       <div className="text-center mb-6">
         <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '50%', backgroundColor: 'var(--accent-glow)', color: 'var(--accent)', marginBottom: '1rem' }}>
           <Sparkles size={32} />
         </div>
-        <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 800 }}>Welcome Back</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sign in to discover and register for campus events</p>
-      </div>
-
-      {/* 3 Toggle options: Student, Faculty, Coordinator */}
-      <div style={{ 
-        display: 'flex', 
-        background: 'var(--bg-secondary)', 
-        padding: '4px', 
-        borderRadius: 'var(--radius-md)', 
-        border: '1px solid var(--border-color)', 
-        marginBottom: '1.5rem',
-        gap: '2px'
-      }}>
-        <button
-          type="button"
-          onClick={() => setRoleGroup('student')}
-          style={{
-            flex: 1,
-            padding: '0.5rem 0.25rem',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            background: roleGroup === 'student' ? 'var(--accent)' : 'transparent',
-            color: roleGroup === 'student' ? '#fff' : 'var(--text-secondary)',
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px'
-          }}
-        >
-          <User size={12} />
-          Student
-        </button>
-        <button
-          type="button"
-          onClick={() => setRoleGroup('faculty')}
-          style={{
-            flex: 1,
-            padding: '0.5rem 0.25rem',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            background: roleGroup === 'faculty' ? 'var(--accent)' : 'transparent',
-            color: roleGroup === 'faculty' ? '#fff' : 'var(--text-secondary)',
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px'
-          }}
-        >
-          <BookOpen size={12} />
-          Faculty
-        </button>
-        <button
-          type="button"
-          onClick={() => setRoleGroup('coordinator')}
-          style={{
-            flex: 1,
-            padding: '0.5rem 0.25rem',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            background: roleGroup === 'coordinator' ? 'var(--accent)' : 'transparent',
-            color: roleGroup === 'coordinator' ? '#fff' : 'var(--text-secondary)',
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px'
-          }}
-        >
-          <ShieldAlert size={12} />
-          Coordinator
-        </button>
+        <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Welcome Back</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sign in to manage and register for campus events</p>
       </div>
 
       {error && (
-        <div className="alert alert-danger" role="alert" style={{ marginBottom: '1.5rem' }}>
+        <div className="alert alert-danger" role="alert">
           {error}
         </div>
       )}
@@ -173,22 +91,14 @@ export const Login: React.FC<LoginProps> = ({ onSuccess, onNavigateToForgotPassw
       </form>
 
       <div className="text-center mt-4" style={{ fontSize: '0.875rem' }}>
+        <span style={{ color: 'var(--text-secondary)' }}>Don't have an account? </span>
         <button
           type="button"
-          onClick={onNavigateToForgotPassword}
+          onClick={onNavigateToRegister}
           style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
         >
-          Forgot Password?
+          Sign Up
         </button>
-      </div>
-
-      <div style={{ borderTop: '1px solid var(--border-color)', margin: '1.5rem 0 0.5rem 0', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-        <a href="#spoc" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }} onClick={() => window.location.hash = '#spoc'}>
-          SPOC Portal Login &rarr;
-        </a>
-        <a href="#admin" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }} onClick={() => window.location.hash = '#admin'}>
-          Admin Portal Login &rarr;
-        </a>
       </div>
       
       <style>{`

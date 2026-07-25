@@ -35,9 +35,9 @@ public class AuthService implements AuthServicePort {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Validate against eligible enrollments
-        EligibleEnrollment enrollment = eligibleEnrollmentRepository
-                .findByRegistrationNumberIgnoreCase(request.registrationNumber())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Registration number is not enrolled."));
+        eligibleEnrollmentRepository
+            .findByRegistrationNumberIgnoreCase(request.registrationNumber())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Registration number is not enrolled."));
 
         // Check duplicate registration number
         if (userRepository.findByRegistrationNumberIgnoreCase(request.registrationNumber()).isPresent()) {
@@ -104,6 +104,16 @@ public class AuthService implements AuthServicePort {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        String resolvedEmail = request.email();
+        if (!resolvedEmail.contains("@")) {
+            // Treat as registration number
+            resolvedEmail = userRepository.findByRegistrationNumberIgnoreCase(resolvedEmail)
+                    .map(User::getEmail)
+                    .orElseGet(() -> eligibleEnrollmentRepository.findByRegistrationNumberIgnoreCase(request.email())
+                            .map(EligibleEnrollment::getEmail)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid registration number.")));
+        }
+
         // Call Supabase Token API
         Map<?, ?> response;
         try {
@@ -112,14 +122,14 @@ public class AuthService implements AuthServicePort {
                     .header("apikey", supabaseProperties.getAnonKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(Map.of(
-                            "email", request.email(),
+                            "email", resolvedEmail,
                             "password", request.password()
                     ))
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password.", e);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials.", e);
         }
 
         if (response == null || !response.containsKey("access_token")) {
@@ -137,7 +147,7 @@ public class AuthService implements AuthServicePort {
         String phone = (String) userMap.get("phone");
 
         // Sync local user profile
-        User user = syncUserProfile(userId, request.email(), name, regNum, phone);
+        User user = syncUserProfile(userId, resolvedEmail, name, regNum, phone);
 
         return new AuthResponse(
                 user.getId(),
@@ -281,5 +291,154 @@ public class AuthService implements AuthServicePort {
                 .build();
 
         return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateProfile(UUID userId, ProfileUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User profile not found."));
+
+        user.setName(request.name());
+        user.setEmail(request.email().toLowerCase());
+        user.setPhoneNumber(request.phoneNumber());
+        user.setProfileImageUrl(request.profileImageUrl());
+
+        User saved = userRepository.save(user);
+        return mapToUserResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<UserResponse> listUsersByRole(String role) {
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRole() != null && u.getRole().equalsIgnoreCase(role))
+                .map(this::mapToUserResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<UserResponse> listCoordinatorsByDepartment(String department) {
+        return userRepository.findAll().stream()
+                .filter(u -> u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(department))
+                .filter(u -> u.getRole() != null && (u.getRole().equalsIgnoreCase("STUDENT_COORDINATOR") || u.getRole().equalsIgnoreCase("FACULTY_COORDINATOR")))
+                .map(this::mapToUserResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public UserResponse createSpoc(RegisterRequest request, String department) {
+        UUID userId = signupInSupabase(request);
+        Role role = roleRepository.findByNameIgnoreCase("SPOC")
+                .orElseGet(() -> roleRepository.save(Role.builder().name("SPOC").build()));
+
+        User user = User.builder()
+                .id(userId)
+                .name(request.name())
+                .email(request.email().toLowerCase())
+                .phoneNumber(request.phoneNumber())
+                .registrationNumber(request.registrationNumber())
+                .department(department)
+                .role(role.getName())
+                .roleEntity(role)
+                .build();
+
+        User saved = userRepository.save(user);
+        return mapToUserResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse createCoordinator(RegisterRequest request, String role, String department) {
+        UUID userId = signupInSupabase(request);
+        Role roleEntity = roleRepository.findByNameIgnoreCase(role)
+                .orElseGet(() -> roleRepository.save(Role.builder().name(role.toUpperCase()).build()));
+
+        User user = User.builder()
+                .id(userId)
+                .name(request.name())
+                .email(request.email().toLowerCase())
+                .phoneNumber(request.phoneNumber())
+                .registrationNumber(request.registrationNumber())
+                .department(department)
+                .role(roleEntity.getName())
+                .roleEntity(roleEntity)
+                .build();
+
+        User saved = userRepository.save(user);
+        return mapToUserResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile not found."));
+
+        userRepository.delete(user);
+
+        try {
+            if (supabaseProperties.getServiceRoleKey() != null && !supabaseProperties.getServiceRoleKey().isEmpty()) {
+                webClient.delete()
+                        .uri(supabaseProperties.getUrl() + "/auth/v1/admin/users/" + userId)
+                        .header("apikey", supabaseProperties.getServiceRoleKey())
+                        .header("Authorization", "Bearer " + supabaseProperties.getServiceRoleKey())
+                        .retrieve()
+                        .toBodilessEntity()
+                        .block();
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: failed to delete user from Supabase auth: " + e.getMessage());
+        }
+    }
+
+    private UserResponse mapToUserResponse(User user) {
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getDepartment(),
+                user.getRegistrationNumber()
+        );
+    }
+
+    private UUID signupInSupabase(RegisterRequest request) {
+        Map<?, ?> response;
+        try {
+            response = webClient.post()
+                    .uri(supabaseProperties.getUrl() + "/auth/v1/signup")
+                    .header("apikey", supabaseProperties.getAnonKey())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of(
+                            "email", request.email(),
+                            "password", request.password(),
+                            "phone", request.phoneNumber() != null ? request.phoneNumber() : "",
+                            "data", Map.of(
+                                    "name", request.name(),
+                                    "registrationNumber", request.registrationNumber()
+                            )
+                    ))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Auth provider signup failed: " + e.getMessage(), e);
+        }
+
+        if (response == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid response from Auth Provider.");
+        }
+
+        if (response.containsKey("user")) {
+            Map<?, ?> userMap = (Map<?, ?>) response.get("user");
+            return UUID.fromString((String) userMap.get("id"));
+        } else if (response.containsKey("id")) {
+            return UUID.fromString((String) response.get("id"));
+        } else {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User ID missing from Auth response.");
+        }
     }
 }

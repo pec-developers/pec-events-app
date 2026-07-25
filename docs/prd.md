@@ -2,43 +2,49 @@
 
 ## 1. Scope of Features
 
-### 1.1 User Registration & Profile Synchronization
-*   **Authentication & Self-Registration Portal:** 
-    - **Phase 1 (V1)**: Supabase Auth (GoTrue) coordinates authentication. The React frontend never accesses Supabase directly. Users register or log in via the Spring Boot `/api/auth` proxy API by providing registration number, email, phone number, and password, which the backend forwards to Supabase on the server side.
-    - **Phase 2 (V2)**: Keycloak coordinates authentication. Users redirect to Keycloak portals exposed behind the Kong Gateway.
-*   **Self-Registration Verification:** 
-    - **Phase 1 (V1)**: Registration number, email, and phone number are validated during registration against a pre-seeded enrollment list. If the registration number is already in use, the user is redirected to the login screen.
-    - **Phase 2 (V2)**: keycloak validates parameters against the enrollment list.
-*   **Single OTP for Password Operations:** 
-    - **Phase 1 (V1)**: A single OTP (sent via email SMTP or SMS using MSG91 Send SMS Auth Hook) is used exclusively for password resets and recovery.
-    - **Phase 2 (V2)**: Keycloak realm dispatches single OTPs via Resend.com SMTP relay or MSG91 SMS custom SPI.
-*   **Automatic Profile Sync:** 
-    - **Phase 1 (V1) & Phase 2 (V2)**: On first successful login, the frontend sends the authenticated JWT bearer token. If the user does not exist in the database, the backend creates a user profile mapping `id`, `name`, `email`, `phone_number`, `registration_number`, `department`, and `role`.
-*   **Database Caching & Decoupling (V2 Only):** 
-    - **Phase 2 (V2) Redis Caching**: High-concurrency event discovery requests (listing and detail queries) are cached in Redis to decrease response times and prevent PostgreSQL database connection limits from being saturated during peaks. (No caching/Redis in V1).
-    - **Phase 2 (V2) RabbitMQ Message Queue**: Decouples the main transactional thread from I/O heavy notification dispatches. Status changes publish events to RabbitMQ, where a consumer consumes and executes Web Push alerts asynchronously. (In V1, notifications are executed in simple Spring `@Async` threads).
-
+#### 1.1 User Registration, Authentication & Profile Management
+*   **Authentication & Login Portal**:
+    - Users authenticate using their credentials:
+      - **Students and Student Coordinators**: Log in via **Student Registration Number** and password.
+      - **SPOCs and Faculty Coordinators**: Log in via **Faculty Registration Number** and password.
+      - **Admins**: Log in via **Email** and password.
+    - OTP is utilized exclusively for forgot-password recovery flows.
+*   **Automatic Profile Sync & Locked Fields**:
+    - On first successful login, the profile details are synchronized from the Auth provider context.
+    - Personal fields (`name`, `email`, `phone_number`, `profile_image_url`) are editable by the user.
+    - Administrative identifier fields (`role`, `department`, `registration_number`) are strictly **locked** and cannot be modified by the user.
+*   **Dynamic Department Role Constraints**:
+    - The number of SPOCs, Faculty Coordinators, and Student Coordinators permitted per department is limited.
+    - Default limits: `MAX_SPOCS_PER_DEPT = 1`, `MAX_FACULTY_COORDINATORS_PER_DEPT = 3`, `MAX_STUDENT_COORDINATORS_PER_DEPT = 3`.
+    - These limits are stored in the database (`system_configurations` table) and dynamically configurable by the Admin.
+    - Promotions/CRUD actions on user roles check and enforce these limits.
+*   **Department CRUD Management**:
+    - Admin can manage (Create, Read, Update, Delete) the list of academic departments (e.g. CSE, ECE, EEE, etc.).
+    - System validates foreign references to departments on user and event tables.
 
 ### 1.2 Event Listing & Discovery
-*   **Discovery Board:** Authenticated students and faculty can browse and view active/upcoming events.
+*   **Discovery Board:** Authenticated students and coordinators can browse and view active/upcoming events.
 *   **Metadata Display:** Events display title, banner image, date, description, coordinator details, price, remaining seats, and registration deadline.
 
-### 1.3 Event Creation (Draft & Publishing)
-*   **Event Creation & Publishing Interface:** General Students can create events (saved as drafts). Coordinators (Faculty & Student) can create & publish events directly, and publish event drafts created by students.
-*   **Collaborative Management:** When creating an event, the creator is marked as the creator. The creator (or their department SPOC) can assign other Faculty or Student Coordinators of their department as collaborators on the event.
-*   **Event Modification:** Any coordinator assigned to an event has full modification permissions to edit details, manage registrations, and verify payments.
-*   **Parameters:** Configurable capacity limits, price, active flags, UPI payment details, and event assets (banners, posters, event photos).
-*   **Overbooking Control:** Enforce strict capacity caps using Postgres row-level locks when seat allocations or registrations occur.
+### 1.3 Event Creation (Draft & Publishing) & Verification
+*   **Action Boundaries by Role**:
+    - **Admin**: Can create, read, update, and delete any event. However, Admin is explicitly **blocked** from accessing or listing participant registration details.
+    - **SPOC**: Can delete events only within their department. Can read all events.
+    - **Faculty Coordinator**: Can perform complete CRUD on all events (draft and active).
+    - **Student Coordinator**: Can create, read, update, and delete **only draft events** within their department (cannot edit/publish active/published events).
+    - **Student**: Read-only access to events.
+*   **Capacity Checks & Row-Locking**:
+    - Enforce database row-level locking (`SELECT ... FOR UPDATE`) to prevent ticket overbooking under high concurrent requests.
 
-#### 1.4 Ticket Booking & Registration (V1)
-*   **Eligibility Boundary:** Student and Faculty (non-coordinators) and Student Coordinators are eligible to register and participate in events. Faculty Coordinators, SPOCs, and Admins are blocked from registering/participating.
-*   **Capacity Checks:** The system counts active reservations as registrations in the `CONFIRMED` state. If this count is equal to or greater than the event's capacity, new registrations are placed in the `WAITING_LIST` state.
-*   **Free Registrations (All events are free for the current scope):**
-    *   *Slots Available:* Immediate registration. Status is set to `CONFIRMED`.
-    *   *Slots Full:* Registration is placed in `WAITING_LIST`.
+### 1.4 Ticket Booking & Registration (V1)
+*   **Eligibility Boundary:** Only Students and Student Coordinators are eligible to register and participate in events. SPOCs, Faculty Coordinators, and Admins are blocked from registering as event participants.
+*   **Registrations Listing**:
+    - Coordinators (Faculty & Student) can read, update, and delete registrations.
+    - Coordinators can export the registration list into CSV, selecting custom fields from the UI.
+    - Students can view only their own past registrations and create/update their own bookings.
 
-### 1.5 [Omitted / Ignored for V1] Verification Dashboard
-*   All events are free; manual verification of UPI references or payments is not required.
+### 1.5 Manual UPI Verification (V1)
+*   Paid events display a UPI QR code; students submit payment receipts (screenshots). Coordinators manually verify and approve bookings. Free events are auto-confirmed.
 
 ### 1.6 Web Push Notifications (PWA)
 *   **Subscription Opt-in:** Prompt the user to grant push permission. If granted, register a service worker subscription with a public VAPID key and send it to the backend.

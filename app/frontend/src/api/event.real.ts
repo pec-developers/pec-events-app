@@ -3,7 +3,8 @@ import type {
   CreateEventRequest,
   EventResponse,
   RegisterEventResponse,
-  RegistrationResponse
+  RegistrationResponse,
+  RegistrationDetailResponse
 } from './event.types';
 
 export const createEvent = async (payload: CreateEventRequest): Promise<EventResponse> => {
@@ -42,4 +43,9 @@ export const updateEvent = async (eventId: string, payload: CreateEventRequest):
 
 export const deleteEvent = async (eventId: string): Promise<void> => {
   await client.delete(`/api/events/${eventId}`);
+};
+
+export const getEventRegistrations = async (eventId: string): Promise<RegistrationDetailResponse[]> => {
+  const { data } = await client.get<RegistrationDetailResponse[]>(`/api/events/${eventId}/registrations`);
+  return data;
 };

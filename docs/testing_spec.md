@@ -230,3 +230,69 @@ flowchart LR
     3.  Publish a new event (`POST /api/events`).
     4.  Request `GET /api/events` again. Assert database is queried again and cache is refilled.
 *   **Expected Result:** Subsequent listing hits the cache, and writes invalidate the cache key `events::list` immediately (Only verified in V2).
+
+---
+
+## 3.7 Multi-Role Routing, Dynamic Limits & Department CRUD (TC-MRR)
+
+#### TC-MRR-01: Admin Department CRUD
+*   **Description:** Verify Admin can create, read, update, and delete academic departments.
+*   **Preconditions:** Admin is logged in.
+*   **Test Steps:**
+    1.  Post new department with code "MECH" and name "Mechanical Engineering" to `POST /api/admin/departments`. Verify creation.
+    2.  Put name update to `PUT /api/admin/departments/MECH`. Verify name is modified.
+    3.  Delete department via `DELETE /api/admin/departments/MECH`. Verify removal.
+*   **Expected Result:** Admin CRUD completes successfully, and non-admins are blocked with `403 Forbidden`.
+
+#### TC-MRR-02: Configurable Department Limits Validation
+*   **Description:** Verify SPOC/coordinator addition is restricted by Admin-configured dynamic limits.
+*   **Preconditions:** Limit `MAX_SPOCS_PER_DEPT` is set to 1. One SPOC exists in department "CSE".
+*   **Test Steps:**
+    1.  Admin attempts to promote a second user to SPOC in department "CSE".
+    2.  Assert trigger/service block.
+    3.  Admin updates limit to 2 via `PUT /api/admin/config`.
+    4.  Admin re-attempts promotion of second user to SPOC in department "CSE".
+*   **Expected Result:** Rejects promotion first with limit error; succeeds after Admin increases limit value.
+
+#### TC-MRR-03: Multi-Role Routing and Access Guards
+*   **Description:** Verify route access boundaries and redirects for unauthorized role views.
+*   **Preconditions:** Authenticated user with role `STUDENT`.
+*   **Test Steps:**
+    1.  Student attempts to browse `/admin/dashboard`. Verify redirect or block.
+    2.  Student attempts to browse `/spoc/dashboard`. Verify redirect or block.
+    3.  Student accesses `/student/dashboard`. Verify access allowed.
+*   **Expected Result:** React Router route guards intercept invalid roles, redirecting back to authorized paths.
+
+#### TC-MRR-04: Student Coordinator Draft Events Restriction
+*   **Description:** Validate that Student Coordinators can create, update, or delete ONLY draft events within their department.
+*   **Preconditions:** User is logged in as Student Coordinator in department "CSE".
+*   **Test Steps:**
+    1.  Create a draft event in CSE. Verify success.
+    2.  Attempt to publish that event directly. Verify block.
+    3.  Attempt to modify an active/published event in CSE. Verify block.
+    4.  Attempt to create a draft event in ECE (other department). Verify block.
+*   **Expected Result:** Actions on non-draft or out-of-department events are rejected.
+
+#### TC-MRR-05: Admin Restricted from Participant Registration Details Lists
+*   **Description:** Verify Admin is explicitly blocked from accessing the registration details list.
+*   **Preconditions:** Admin is logged in.
+*   **Test Steps:**
+    1.  Admin attempts to request `GET /api/registrations`.
+    2.  Assert response status.
+*   **Expected Result:** Request returns `403 Forbidden` for Admin role.
+
+#### TC-MRR-06: Profile Details Field Locks
+*   **Description:** Verify user profile update rejects changes to role, department, or registration number.
+*   **Preconditions:** User logged in.
+*   **Test Steps:**
+    1.  Submit profile update payload altering `name` and `phone`, but also trying to change `role` to `ADMIN` and `department` to `ECE`.
+    2.  Check updated record.
+*   **Expected Result:** Profile update succeeds for `name` and `phone`, but `role` and `department` remain unchanged (locked).
+
+#### TC-MRR-07: Custom-Field CSV Registration Export
+*   **Description:** Verify that coordinators can export registrations to CSV with custom-selected fields.
+*   **Preconditions:** Coordinator logged in, registrations exist for an event.
+*   **Test Steps:**
+    1.  Open export modal, select only `registrationNumber` and `name` fields.
+    2.  Click Export. Verify generated CSV content.
+*   **Expected Result:** CSV downloads containing only the selected columns with corresponding data rows.

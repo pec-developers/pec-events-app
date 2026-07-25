@@ -2,16 +2,27 @@
 
 ## 1. Database Schema & ER Diagram
 
-The PostgreSQL database (Supabase) stores user profiles, event details, registrations, manual payment verification history, and browser push notification endpoints.
+The PostgreSQL database stores user profiles, departments, configurations, event details, registrations, manual payment verification history, and browser push notification endpoints.
 
 ```mermaid
 erDiagram
+    departments {
+        varchar code PK
+        varchar name
+        timestamp created_at
+    }
+    system_configurations {
+        varchar key PK
+        integer value
+        text description
+        timestamp updated_at
+    }
     eligible_enrollments {
         varchar registration_number PK
         varchar name
         varchar email
         varchar phone_number
-        varchar department
+        varchar department FK
         varchar role
         timestamp created_at
     }
@@ -21,7 +32,7 @@ erDiagram
         varchar email
         varchar phone_number
         varchar registration_number FK
-        varchar department
+        varchar department FK
         varchar role
         varchar profile_image_url
         timestamp created_at
@@ -31,7 +42,7 @@ erDiagram
         varchar title
         text description
         uuid creator_id FK
-        varchar department
+        varchar department FK
         integer capacity
         varchar banner_image_url
         varchar poster_image_url
@@ -61,6 +72,9 @@ erDiagram
         timestamp created_at
     }
 
+    departments ||--o{ eligible_enrollments : "belongs to"
+    departments ||--o{ users : "assigned to"
+    departments ||--o{ events : "belongs to"
     eligible_enrollments ||--o| users : "authorizes"
     users ||--o{ events : "creates"
     users ||--o{ event_coordinators : "assigned as collaborator"
@@ -71,8 +85,9 @@ erDiagram
 ```
 
 ### 1.1 Integrity Rules
-*   **Users:** User profiles self-registered. Registration number must exist in the `eligible_enrollments` table and cannot be duplicated. User roles (`STUDENT`, `FACULTY`, `ADMIN`) are synced on registration based on the matching enrollment record.
-*   **Coordinators Limits:** Department SPOCs promote/create coordinator roles within their department (max 3 Faculty Coordinators, and max 3 Student Coordinators per department).
+*   **Departments:** All user records, eligible enrollments, and events must point to valid department codes registered in the `departments` table.
+*   **Users:** User profiles self-registered. Registration number must exist in the `eligible_enrollments` table and cannot be duplicated. User roles are synced on registration based on the matching enrollment record.
+*   **Coordinators Limits:** Department SPOCs promote/create coordinator roles within their department, subject to maximum quotas (default 1 SPOC, 3 Faculty Coordinators, 3 Student Coordinators per department) defined in the `system_configurations` table. Database trigger blocks actions exceeding these limits.
 *   **Registrations:** Status transitions:
     *   *Free events (All events):* Immediate slot available: `CONFIRMED`. No slot: `WAITING_LIST` -> `CONFIRMED` (upon cancellation dropout promotion).
 *   **Capacity Constraint:** Active reservation slots count (registrations in the `CONFIRMED` state) must not exceed the event `capacity`.
