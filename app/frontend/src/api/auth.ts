@@ -1,71 +1,42 @@
-import client from './client';
+import { apiClient } from './client';
+import type {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+  MessageResponse,
+  UserResponse,
+} from './types/auth.types';
 
-export interface RegisterRequest {
-  registrationNumber: string;
-  email: string;
-  phoneNumber?: string;
-  name: string;
-  password?: string;
-}
+export const authApi = {
+  login: async (data: LoginRequest): Promise<AuthResponse> => {
+    const response = await apiClient.post<AuthResponse>('/api/auth/login', data);
+    return response.data;
+  },
 
-export interface LoginRequest {
-  email: string;
-  password?: string;
-}
+  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+    const response = await apiClient.post<AuthResponse>('/api/auth/register', data);
+    return response.data;
+  },
 
-export interface ForgotPasswordRequest {
-  identity: string;
-  channel: 'EMAIL' | 'SMS';
-}
+  logout: async (): Promise<MessageResponse> => {
+    const response = await apiClient.post<MessageResponse>('/api/auth/logout');
+    return response.data;
+  },
 
-export interface ResetPasswordRequest {
-  sessionToken: string;
-  otp: string;
-  newPassword?: string;
-}
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<MessageResponse> => {
+    const response = await apiClient.post<MessageResponse>('/api/auth/password/forgot', data);
+    return response.data;
+  },
 
-export interface AuthResponse {
-  userId: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string | null;
-  registrationNumber: string | null;
-  accessToken?: string;
-}
+  resetPassword: async (data: ResetPasswordRequest): Promise<MessageResponse> => {
+    const response = await apiClient.post<MessageResponse>('/api/auth/password/reset', data);
+    return response.data;
+  },
 
-export interface UserResponse {
-  userId: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string | null;
-  registrationNumber: string | null;
-}
-
-export const registerUser = async (payload: RegisterRequest): Promise<AuthResponse> => {
-  const { data } = await client.post<AuthResponse>('/api/auth/register', payload);
-  return data;
-};
-
-export const loginUser = async (payload: LoginRequest): Promise<AuthResponse> => {
-  const { data } = await client.post<AuthResponse>('/api/auth/login', payload);
-  return data;
-};
-
-export const logoutUser = async (): Promise<void> => {
-  await client.post('/api/auth/logout');
-};
-
-export const forgotPassword = async (payload: ForgotPasswordRequest): Promise<void> => {
-  await client.post('/api/auth/password/forgot', payload);
-};
-
-export const resetPassword = async (payload: ResetPasswordRequest): Promise<void> => {
-  await client.post('/api/auth/password/reset', payload);
-};
-
-export const getCurrentUser = async (): Promise<UserResponse> => {
-  const { data } = await client.get<UserResponse>('/api/auth/me');
-  return data;
+  getMe: async (): Promise<UserResponse> => {
+    const response = await apiClient.get<UserResponse>('/api/auth/me');
+    return response.data;
+  },
 };
