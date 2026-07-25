@@ -1,104 +1,141 @@
 import { create } from 'zustand';
-import { 
-  UserResponse, 
-  LoginRequest, 
-  RegisterRequest, 
-  loginUser, 
-  registerUser, 
-  logoutUser, 
-  getCurrentUser 
-} from '../api/auth';
+import { authApi } from '../api/auth';
+import type { LoginRequest, RegisterRequest, UserResponse } from '../api/types/auth.types';
 
 interface AuthState {
   user: UserResponse | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
-  setUser: (user: UserResponse | null) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  
-  login: (payload: LoginRequest) => Promise<void>;
-  register: (payload: RegisterRequest) => Promise<void>;
+
+  login: (credentials: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
-  checkSession: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
+  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  accessToken: localStorage.getItem('accessToken'),
+  isAuthenticated: !!localStorage.getItem('accessToken'),
   isLoading: false,
   error: null,
 
-  setUser: (user) => set({ user, isAuthenticated: !!user, error: null }),
-  setLoading: (isLoading) => set({ isLoading }),
-  setError: (error) => set({ error }),
-
-  login: async (payload) => {
+  login: async (credentials) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await loginUser(payload);
-      set({ 
-        user: {
-          userId: response.userId,
-          name: response.name,
-          email: response.email,
-          role: response.role,
-          department: response.department,
-          registrationNumber: response.registrationNumber
-        }, 
-        isAuthenticated: true, 
-        isLoading: false 
+      const response = await authApi.login(credentials);
+      
+      const userObj: UserResponse = {
+        userId: response.userId,
+        name: response.name,
+        email: response.email,
+        role: response.role,
+        department: response.department,
+        registrationNumber: response.registrationNumber,
+      };
+
+      const token = response.accessToken || '';
+      
+      if (token) {
+        localStorage.setItem('accessToken', token);
+      }
+      localStorage.setItem('user', JSON.stringify(userObj));
+
+      set({
+        user: userObj,
+        accessToken: token || null,
+        isAuthenticated: true,
+        isLoading: false,
       });
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Login failed';
-      set({ error: message, isLoading: false });
-      throw new Error(message);
+      set({
+        error: err.message || 'Login failed',
+        isLoading: false,
+      });
+      throw err;
     }
   },
 
-  register: async (payload) => {
+  register: async (data) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await registerUser(payload);
-      set({ 
-        user: {
-          userId: response.userId,
-          name: response.name,
-          email: response.email,
-          role: response.role,
-          department: response.department,
-          registrationNumber: response.registrationNumber
-        }, 
-        isAuthenticated: true, 
-        isLoading: false 
+      const response = await authApi.register(data);
+      
+      const userObj: UserResponse = {
+        userId: response.userId,
+        name: response.name,
+        email: response.email,
+        role: response.role,
+        department: response.department,
+        registrationNumber: response.registrationNumber,
+      };
+
+      const token = response.accessToken || '';
+      
+      if (token) {
+        localStorage.setItem('accessToken', token);
+      }
+      localStorage.setItem('user', JSON.stringify(userObj));
+
+      set({
+        user: userObj,
+        accessToken: token || null,
+        isAuthenticated: true,
+        isLoading: false,
       });
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Registration failed';
-      set({ error: message, isLoading: false });
-      throw new Error(message);
+      set({
+        error: err.message || 'Registration failed',
+        isLoading: false,
+      });
+      throw err;
     }
   },
 
   logout: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
-      await logoutUser();
+      await authApi.logout();
     } catch (err) {
-      // Proceed with local logout cleanup even if server request fails
+      // Log error but proceed to clear client-side state
+      console.error('Logout request failed on backend:', err);
     } finally {
-      set({ user: null, isAuthenticated: false, isLoading: false, error: null });
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      set({
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
     }
   },
 
-  checkSession: async () => {
-    set({ isLoading: true, error: null });
+  checkAuth: async () => {
+    set({ isLoading: true });
     try {
-      const user = await getCurrentUser();
-      set({ user, isAuthenticated: true, isLoading: false });
+      const userObj = await authApi.getMe();
+      localStorage.setItem('user', JSON.stringify(userObj));
+      set({
+        user: userObj,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (err) {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      // Session is invalid or expired
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      set({
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
     }
-  }
+  },
+
+  clearError: () => set({ error: null }),
 }));

@@ -1,48 +1,70 @@
-import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import type { RegisterRequest } from '../api/types/auth.types';
 
 export const useLogin = () => {
-  const loginFn = useAuthStore((state) => state.login);
-  const error = useAuthStore((state) => state.error);
+  const login = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
-  const [success, setSuccess] = useState(false);
+  const error = useAuthStore((state) => state.error);
+  const clearError = useAuthStore((state) => state.clearError);
 
-  const handleLogin = async (email: string, password?: string) => {
-    setSuccess(false);
+  const handleLogin = async (email: string, password: string): Promise<boolean> => {
     try {
-      await loginFn({ email, password });
-      setSuccess(true);
+      await login({ email, password });
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
   };
 
-  return { handleLogin, isLoading, error, success };
+  return {
+    handleLogin,
+    isLoading,
+    error,
+    clearError,
+  };
 };
 
 export const useRegister = () => {
-  const registerFn = useAuthStore((state) => state.register);
-  const error = useAuthStore((state) => state.error);
+  const register = useAuthStore((state) => state.register);
   const isLoading = useAuthStore((state) => state.isLoading);
-  const [success, setSuccess] = useState(false);
+  const error = useAuthStore((state) => state.error);
+  const clearError = useAuthStore((state) => state.clearError);
 
-  const handleRegister = async (payload: {
-    registrationNumber: string;
-    email: string;
-    phoneNumber?: string;
-    name: string;
-    password?: string;
-  }) => {
-    setSuccess(false);
+  const handleRegister = async (data: RegisterRequest): Promise<boolean> => {
     try {
-      await registerFn(payload);
-      setSuccess(true);
+      await register(data);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
   };
 
-  return { handleRegister, isLoading, error, success };
+  return {
+    handleRegister,
+    isLoading,
+    error,
+    clearError,
+  };
+};
+
+export const useAuth = () => {
+  const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const error = useAuthStore((state) => state.error);
+  const logout = useAuthStore((state) => state.logout);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const clearError = useAuthStore((state) => state.clearError);
+
+  return {
+    user,
+    accessToken,
+    isAuthenticated,
+    isLoading,
+    error,
+    logout,
+    checkAuth,
+    clearError,
+  };
 };
