@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 
 export const handlers = [
-  http.post('/api/auth/login', async ({ request }) => {
+  http.post('*/api/auth/login', async ({ request }) => {
     const { email } = (await request.json()) as any;
     if (email === 'invalid@pec.edu') {
       return new HttpResponse(
@@ -20,7 +20,7 @@ export const handlers = [
     });
   }),
 
-  http.post('/api/auth/register', async ({ request }) => {
+  http.post('*/api/auth/register', async ({ request }) => {
     const { email, name, registrationNumber } = (await request.json()) as any;
     return HttpResponse.json({
       userId: '11111111-1111-1111-1111-111111111111',
@@ -33,11 +33,11 @@ export const handlers = [
     });
   }),
 
-  http.post('/api/auth/logout', () => {
+  http.post('*/api/auth/logout', () => {
     return HttpResponse.json({ message: 'Logged out successfully' });
   }),
 
-  http.get('/api/auth/me', () => {
+  http.get('*/api/auth/me', () => {
     return HttpResponse.json({
       userId: '11111111-1111-1111-1111-111111111111',
       name: 'John Doe',
