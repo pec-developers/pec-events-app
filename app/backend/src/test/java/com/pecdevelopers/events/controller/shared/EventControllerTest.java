@@ -3,7 +3,7 @@ package com.pecdevelopers.events.controller.shared;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pecdevelopers.events.config.SupabaseProperties;
 import com.pecdevelopers.events.model.dto.CreateEventRequest;
-import com.pecdevelopers.events.model.dto.EventResponse;
+// import com.pecdevelopers.events.model.dto.EventResponse;
 import com.pecdevelopers.events.model.entity.Event;
 import com.pecdevelopers.events.repository.RegistrationRepository;
 import com.pecdevelopers.events.service.port.EventServicePort;
@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -61,7 +62,7 @@ public class EventControllerTest {
                 .build();
 
         when(eventService.listEventsForUser(userId)).thenReturn(List.of(event));
-        when(registrationRepository.countByEventIdAndStatusIn(any(UUID.class), any(List.class))).thenReturn(10L);
+        when(registrationRepository.countByEventIdAndStatusIn(any(UUID.class), anyList())).thenReturn(10L);
 
         mockMvc.perform(get("/api/events")
                         .requestAttr("userId", userId.toString()))

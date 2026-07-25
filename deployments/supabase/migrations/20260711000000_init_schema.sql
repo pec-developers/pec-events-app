@@ -54,6 +54,8 @@ CREATE TABLE events (
     banner_image_url VARCHAR(255),
     poster_image_url VARCHAR(255),
     event_photos_urls VARCHAR(255)[],
+    status VARCHAR(20) DEFAULT 'DRAFT',
+    department_scope VARCHAR(20) DEFAULT 'ALL_DEPTS',
     active BOOLEAN DEFAULT TRUE,
     date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -14,7 +14,6 @@ INSERT INTO departments (code, name) VALUES
 ('EEE', 'Electrical and Electronics Engineering'),
 ('IT', 'Information Technology'),
 ('MECH', 'Mechanical Engineering'),
-('CIVIL', 'Civil Engineering'),
 ('AIDS', 'Artificial Intelligence and Data Science');
 
 -- 2. Add constraints to existing tables referencing departments

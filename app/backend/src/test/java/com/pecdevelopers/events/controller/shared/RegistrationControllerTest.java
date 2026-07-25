@@ -1,8 +1,8 @@
 package com.pecdevelopers.events.controller.shared;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+// import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pecdevelopers.events.config.SupabaseProperties;
-import com.pecdevelopers.events.model.dto.RegistrationDetailResponse;
+// import com.pecdevelopers.events.model.dto.RegistrationDetailResponse;
 import com.pecdevelopers.events.model.entity.Event;
 import com.pecdevelopers.events.model.entity.Registration;
 import com.pecdevelopers.events.model.entity.User;
@@ -17,8 +17,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+// import static org.mockito.ArgumentMatchers.any;
+// import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -33,8 +33,8 @@ public class RegistrationControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+//     private final ObjectMapper objectMapper = new ObjectMapper()
+//             .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @MockitoBean
     private RegistrationServicePort registrationService;
