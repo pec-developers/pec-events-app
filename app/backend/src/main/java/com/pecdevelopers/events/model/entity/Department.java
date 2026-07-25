@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 @Table(name = "departments")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Department {
     @Id
     @Column(length = 10)

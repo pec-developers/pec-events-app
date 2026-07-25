@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 @Table(name = "system_configurations")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class SystemConfiguration {
     @Id
     @Column(name = "`key`", length = 50)

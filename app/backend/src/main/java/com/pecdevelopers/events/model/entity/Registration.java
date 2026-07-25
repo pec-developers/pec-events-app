@@ -9,9 +9,9 @@ import java.util.UUID;
 @Table(name = "registrations")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Registration {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

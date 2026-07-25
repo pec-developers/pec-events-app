@@ -54,7 +54,6 @@ public class AuthService implements AuthServicePort {
                     .bodyValue(Map.of(
                             "email", request.email(),
                             "password", request.password(),
-                            "phone", request.phoneNumber() != null ? request.phoneNumber() : "",
                             "data", Map.of(
                                     "name", request.name(),
                                     "registrationNumber", request.registrationNumber()

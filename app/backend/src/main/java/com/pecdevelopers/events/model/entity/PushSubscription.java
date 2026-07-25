@@ -9,9 +9,9 @@ import java.util.UUID;
 @Table(name = "push_subscriptions")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class PushSubscription {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

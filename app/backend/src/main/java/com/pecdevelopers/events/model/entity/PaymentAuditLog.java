@@ -9,9 +9,9 @@ import java.util.UUID;
 @Table(name = "payment_audit_logs")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class PaymentAuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

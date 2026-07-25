@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 @Table(name = "eligible_enrollments")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class EligibleEnrollment {
     @Id
     @Column(name = "registration_number", length = 50)

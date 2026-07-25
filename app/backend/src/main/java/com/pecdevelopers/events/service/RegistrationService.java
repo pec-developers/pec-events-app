@@ -102,8 +102,8 @@ public class RegistrationService implements RegistrationServicePort {
         String oldStatus = registration.getStatus();
 
         // Lock event
-        Event event = eventRepository.findByIdForUpdate(eventId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found."));
+        eventRepository.findByIdForUpdate(eventId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found."));
 
         // Delete registration
         registrationRepository.delete(registration);

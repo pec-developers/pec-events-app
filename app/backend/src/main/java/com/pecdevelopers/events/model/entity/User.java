@@ -9,9 +9,9 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class User {
     @Id
     private UUID id; // Matches Supabase auth.users.id
@@ -48,4 +48,12 @@ public class User {
     @Column(name = "updated_at")
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PrePersist
+    @PreUpdate
+    private void syncRoleFromEntity() {
+        if (this.roleEntity != null) {
+            this.role = this.roleEntity.getName();
+        }
+    }
 }

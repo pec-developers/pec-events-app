@@ -23,7 +23,11 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    public AuthResponse register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
+    ) {
         AuthResponse response = authService.register(request);
         if (response.accessToken() != null) {
             setAuthCookie(httpRequest, httpResponse, response.accessToken());
@@ -32,7 +36,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    public AuthResponse login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
+    ) {
         AuthResponse response = authService.login(request);
         if (response.accessToken() != null) {
             setAuthCookie(httpRequest, httpResponse, response.accessToken());
